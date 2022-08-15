@@ -1,0 +1,5 @@
+accountsservice (0.6.55-deepin) stable; urgency=medium
+
+  * ['Rebuild  against by  current gcc 11.2']
+
+ -- Deepin Packages Builder <packages@deepin.org>  Wed, 10 Aug 2022 20:49:37 +0800

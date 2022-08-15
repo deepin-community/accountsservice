@@ -1,0 +1,35 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+export DEB_LDFLAGS_MAINT_APPEND=-Wl,--as-needed
+
+binaries := $(shell dh_listpackages)
+extra_meson_options =
+
+ifneq ($(filter libaccountsservice-doc,$(binaries)),)
+extra_meson_options += -Dgtk_doc=true
+else
+extra_meson_options += -Dgtk_doc=false
+endif
+
+ifeq ($(DEB_HOST_ARCH_OS),linux)
+extra_meson_options += -Dsystemd=true
+endif
+
+%:
+	dh $@ --with=gir
+
+override_dh_makeshlibs:
+	dh_makeshlibs -V -- -c4
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		-Ddocbook=true \
+		-Dgdmconffile=/etc/gdm3/daemon.conf \
+		-Dadmin_group=sudo \
+		-Dsystemdsystemunitdir=/lib/systemd/system \
+		-Dintrospection=true \
+		$(extra_meson_options)
+
+override_dh_installchangelogs:
+	dh_installchangelogs NEWS
