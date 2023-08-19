@@ -11,7 +11,7 @@ License: GPL-3+
 
 Files: src/user.c
  src/libaccountsservice/act-user.*
- src/libaccountsservice/act-user.manager.*
+ src/libaccountsservice/act-user-manager.*
  doc/dbus/spec-to-docbook.xsl
 Copyright:
   2009-2010 Red Hat, Inc

@@ -1,0 +1,12 @@
+#!/bin/sh
+# chpasswd(8) wrapper for use by debian/tests/integration.py
+#
+# Copyright 2023 Simon McVittie
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+LOG='/run/accountsservice-integration-test.log'
+
+echo "invoked chpasswd: $0 $*" >> "$LOG"
+echo "loginuid is $(cat /proc/self/loginuid)" >> "$LOG"
+
+exec /usr/sbin/chpasswd.distrib "$@"

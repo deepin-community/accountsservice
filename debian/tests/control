@@ -5,3 +5,18 @@ Restrictions: allow-stderr, superficial
 Tests: pygi.py
 Depends: accountsservice, gir1.2-accountsservice-1.0, libpam-systemd | libpam-elogind, python3, python3-gi
 Restrictions: allow-stderr, superficial
+
+Tests: integration.py
+Depends:
+ accountsservice,
+ gir1.2-accountsservice-1.0,
+ libcrypt1,
+ libnss-systemd,
+ libpam-systemd | libpam-elogind,
+ polkitd,
+ python3,
+ python3-gi,
+Restrictions:
+ allow-stderr,
+ breaks-testbed,
+ needs-root,

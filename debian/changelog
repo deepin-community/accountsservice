@@ -1,5 +1,876 @@
-accountsservice (0.6.55-deepin) stable; urgency=medium
+accountsservice (22.08.8-6) unstable; urgency=medium
 
-  * ['Rebuild  against by  current gcc 11.2']
+  * Team upload
+  * d/p/daemon-Don-t-crash-if-etc-shadow-doesn-t-exist.patch:
+    Add patch to prevent a crash if /etc/shadow is missing or empty
+    (Closes: #1031309)
+  * d/patches: Mark most patches as having been applied upstream
 
- -- Deepin Packages Builder <packages@deepin.org>  Wed, 10 Aug 2022 20:49:37 +0800
+ -- Simon McVittie <smcv@debian.org>  Sat, 18 Feb 2023 09:22:31 +0000
+
+accountsservice (22.08.8-5) unstable; urgency=medium
+
+  * Team upload
+  * d/p/user-Use-correct-format-strings-to-print-accounts_user_ge.patch,
+    d/p/Annotate-varargs-functions-with-G_GNUC_PRINTF.patch:
+    Add proposed patches to fix autopkgtest failure on armel and armhf.
+    A format string error led to a segfault on these architectures.
+  * d/tests/integration.py: Set up libnss-systemd correctly.
+    This doesn't actually matter for what we do in this test, but the
+    format string was wrong, which would have resulted in getpwuid failing.
+  * d/tests/integration.py: Add copyright/licensing headers
+  * d/tests/integration.py: Resolve a TODO comment
+  * d/tests/integration.py: Don't wait forever for state to change
+  * d/tests/integration.py: Lint fixes
+
+ -- Simon McVittie <smcv@debian.org>  Tue, 07 Feb 2023 13:46:10 +0000
+
+accountsservice (22.08.8-4) unstable; urgency=medium
+
+  * Team upload
+  * d/p/daemon-Clarify-use-of-generator_state-users.patch,
+    d/p/daemon-Define-local-users-as-being-exactly-those-present-.patch:
+    Replace previous solution for #1030262 with the version that was merged
+    upstream.
+    This has the effect that users existing in /etc/passwd but not
+    /etc/shadow are treated as remote, which is as intended by upstream
+    but had unintentionally regressed in 0.6.50.
+    - d/p/daemon-Enumerate-all-users-in-etc-passwd-to-decide-which-.patch:
+      Drop patch, superseded by the above
+  * d/p/user-Replace-usermod-p-with-chpasswd-e.patch:
+    Mark as having been applied upstream
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 05 Feb 2023 21:50:37 +0000
+
+accountsservice (22.08.8-3) unstable; urgency=medium
+
+  * Team upload
+  * d/control: accountsservice Recommends polkitd.
+    Without polkitd, its D-Bus interface will be essentially read-only.
+  * d/tests/integration.py: Add an integration test.
+    Among other things, this exercises #1030253 and #1030262, and detected
+    the missing Recommends on polkitd.
+  * d/p/user-Replace-usermod-p-with-chpasswd-e.patch:
+    Add patch to avoid (encrypted) password being briefly visible in /proc
+    (Closes: #757912; CVE-2012-6655)
+    - d/tests/integration.py: Assert that CVE-2012-6655 was avoided
+  * d/copyright: Fix a typo detected by Lintian
+  * Standards-Version: 4.6.2 (no changes required)
+
+ -- Simon McVittie <smcv@debian.org>  Sun, 05 Feb 2023 19:07:46 +0000
+
+accountsservice (22.08.8-2) unstable; urgency=medium
+
+  * Team upload
+
+  [ Luca Boccassi ]
+  * accountsservice: depend on default-dbus-system-bus | dbus-system-bus,
+    instead of requiring a specific implementation
+
+  [ Simon McVittie ]
+  * d/control: Build-depend on polkitd instead of transitional policykit-1
+    (Closes: #1025542)
+  * d/patches: Re-export patch series (no functional changes)
+  * d/p/0002-create-and-manage-groups-like-on-a-debian-system.patch:
+    Call adduser with --disabled-password instead of --disabled-login.
+    These options did essentially the same thing in Debian 11, and probably
+    older versions.
+    Since adduser 3.130, --disabled-login has the additional effect of
+    setting the user's shell to /usr/sbin/nologin, which is not the expected
+    default when adding a user via an interface intended for managing
+    human users' interactive login accounts. Switching to --disabled-password
+    preserves previous functionality here.
+    (Closes: #1030253)
+  * d/p/daemon-Enumerate-all-users-in-etc-passwd-to-decide-which-.patch:
+    Add proposed fix for local users sometimes being treated as remote,
+    which results in a misleading UX in gnome-control-center
+    (Closes: #1030262)
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 03 Feb 2023 15:51:06 +0000
+
+accountsservice (22.08.8-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream release
+  * Upstream commits to prevent FTBFS:
+    - d/p/tests-fix-the-signature-for-the-SetLocked-call.patch
+    - d/p/tests-fix-invocation-of-AddUser.patch
+  * Drop d/p/0009-language-tools.patch
+  * debian/libaccountsservice0.symbols:
+    - Add new expiration policy related symbols
+  * Bump Standards-Version to 4.6.1
+
+ -- Gunnar Hjalmarsson <gunnarhj@debian.org>  Fri, 27 May 2022 00:07:53 +0200
+
+accountsservice (22.07.5-2) unstable; urgency=medium
+
+  * d/p/0002-create-and-manage-groups-like-on-a-debian-system.patch:
+    - change back to error out if adding the user to a group fails but
+      don't try to use a non existant group instead
+  * d/p/0009-language-tools.patch:
+    - restore permission marker that got lost by doing a quilt refresh,
+      without those the script lack +x permission
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Tue, 22 Feb 2022 12:10:38 +0100
+
+accountsservice (22.07.5-1) unstable; urgency=medium
+
+  * New upstream version
+  * Remove the patches which are included in the update
+  * d/p/0002-create-and-manage-groups-like-on-a-debian-system.patch:
+    - changed to warn when trying to add the user to non existant
+      groups rather than erroring out since the list is static and some
+      default groups are created by optional packages.
+  * debian/accountsservice.install:
+    - install the new user-templates
+  * debian/control, debian/compat:
+    - include the build-depends needed for the tests and the vapis
+    - updated libglib and meson requirements
+    - use current debhelper and standards versions
+  * debian/libaccountsservice0.symbols:
+    - updated for the new version, the consolekit option has been removed
+      but those symbols were not part of the public API
+  * debian/libaccountsservice-dev.install:
+    - install the vapis
+  * debian/rules:
+    - don't try to install the NEWS file which isn't provided anymore
+    - remove the non existant systemd option
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Mon, 21 Feb 2022 20:50:26 +0100
+
+accountsservice (0.6.55-3) unstable; urgency=medium
+
+  * Team upload
+  * d/rules: Enable libsystemd dependency, for logind integration.
+    This appears to have got lost in the switch to the Meson build system,
+    where both libsystemd and libelogind support for communicating with a
+    logind implementation are disabled by default (they are mutually exclusive).
+    In particular, this fixes the "Switch User..." menu option in GNOME
+    Shell, which disappeared because libaccountsservice didn't tell GNOME
+    Shell that user-switching was possible.
+    This should work equally well for elogind due to libelogind's libsystemd
+    ABI compatibility, although I haven't tried that configuration.
+    (Closes: #968394)
+  * d/control: accountsservice Recommends default-logind | logind.
+    About half of accountsservice's functionality is a higher-level API
+    over either systemd-logind, or something like elogind that is compatible
+    enough to be a reasonable substitute (or ConsoleKit, but that's
+    dead upstream and no longer in Debian).
+  * d/rules: Explicitly enable GObject-Introspection.
+    It's enabled by default, but explicit is better than implicit for this
+    sort of thing.
+  * d/rules: Simplify how we choose whether to enable gtk-doc.
+    Enable it if and only if we are building the libaccountsservice-doc
+    package.
+  * d/p/build-Add-missing-pkg-config-Requires.private-dependencie.patch:
+    Add patch to fix missing pkg-config dependencies
+  * d/tests/build: Add a smoke-test for building against
+    libaccountsservice with pkg-config
+  * d/tests/pygi.py: Add a smoke-test.
+    When run from a full desktop session, this should produce
+    reasonable-looking results. We don't make any assertions about its
+    output because we can't know how an automated test system will be
+    configured, but it should at least run successfully and exit 0.
+
+ -- Simon McVittie <smcv@debian.org>  Fri, 14 Aug 2020 15:31:50 +0100
+
+accountsservice (0.6.55-2) unstable; urgency=medium
+
+  [ Laurent Bigonville ]
+  * Move the daemon to /usr/libexec now that's allowed in the policy
+
+  [ Philip Withnall ]
+  * Update group management patches to respect `extra_admin_groups` option.
+
+  [ Iain Lane ]
+  * Add patch to not crash in the library when the daemon goes away
+    (Closes: #948228) (LP: #1843982)
+
+ -- Iain Lane <laney@debian.org>  Tue, 05 May 2020 16:31:00 +0100
+
+accountsservice (0.6.55-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream version 0.6.55 (Closes: #901308)
+  * Bump build-dependencies and switch to meson
+  * d/p/0002-create-and-manage-groups-like-on-a-debian-system.patch,
+    d/p/0005-gdm_config_file_path.patch: Refreshed
+  * d/patches/0007-add-lightdm-support.patch,
+    d/patches/0009-language-tools.patch: Refreshed using ubuntu patches
+  * Drop d/p/1002-dont-override-standardoutput.patch, applied upstream
+  * d/p/0015-debian-nologin-path.patch: Dropped not needed anymore
+  * d/p/0016-user-fix-insufficient-path-prefix-check.patch: Dropped, applied
+    upstream
+  * debian/libaccountsservice0.symbols: Add newly exported symbols
+  * debian/gir1.2-accountsservice-1.0.install: Install the .typelib file in a
+    multiarch directory
+  * debian/libaccountsservice0.symbols: Add the Build-Depends-Package field
+  * debian/rules: There are no tests defined, so stop overriding dh_auto_test
+    as it's useless
+  * libaccountsservice-doc: Install the documentation in /usr/share/gtk-doc/
+  * Support the nodoc build-profile
+  * Bump debhelper compatibility to 12
+  * Bump Standards-Version to 4.4.1 (no further changes)
+  * debian/accountsservice.postinst: Do not restart accounts-daemon in
+    postinst (Closes: #866507)
+  * debian/watch: Use https://
+  * Stop using dh-exec
+  * d/p/1001-move-dbus-conf-file.patch: Move D-Bus conf file to
+    /usr/share/dbus-1/system.d
+  * debian/control, debian/rules: Remove ancient Breaks/Replaces
+
+ -- Laurent Bigonville <bigon@debian.org>  Sat, 12 Oct 2019 13:12:38 +0200
+
+accountsservice (0.6.45-2) unstable; urgency=medium
+
+  [ Robert Ancell ]
+  * debian/patches/0006-adduser_instead_of_useradd.patch:
+    - Merged into 0002-create-and-manage-groups-like-on-a-debian-system.patch
+  * debian/patches/*:
+    - Removed unused patches.
+
+  [ Emilio Pozuelo Monfort ]
+  * debian/control: Update Vcs-* for move to salsa.debian.org.
+
+  [ Salvatore Bonaccorso ]
+  * user: fix insufficient path prefix check (CVE-2018-14036)
+    (Closes: #903828)
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Tue, 05 Mar 2019 11:05:07 +0100
+
+accountsservice (0.6.45-1) unstable; urgency=medium
+
+  * New upstream release.
+  * debian/libaccountsservice0.symbols: add new symbols.
+  * debian/control: bump Standards-Version to 4.1.0; no changes needed.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Wed, 27 Sep 2017 23:20:10 +0200
+
+accountsservice (0.6.43-1) unstable; urgency=medium
+
+  * Adopt package under pkg-freedesktop. Closes: #842851.
+  * Add myself to Uploaders.
+  * New upstream release. Closes: #841672.
+  * debian/patches/0002-create-and-manage-groups-like-on-a-debian-system.patch,
+    debian/patches/1002-dont-override-standardoutput.patch:
+    + Updated to apply with the new version.
+  * debian/patches/0014-libsystemd.patch:
+    + Removed, applied upstream.
+  * Refreshed all patches.
+  * debian/rules: Fail the build if the symbols file is outdated.
+  * debian/libaccountsservice0.symbols: Updated for new symbols.
+  * Use dh-exec to install linux-only files.
+  * Unconditionally install language-tools.
+  * debhelper enables autoreconf, systemd and parallel builds by default
+    in compat 10, no need to set those anymore.
+  * debian/rules: Don't call dh_girepository directly. Use dh gir sequence
+    instead.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Thu, 29 Dec 2016 16:17:42 +0100
+
+accountsservice (0.6.40-4) unstable; urgency=medium
+
+  [ Dr. Tobias Quathamer ]
+  * QA upload.
+  * Use debhelper v10
+  * Add Multi-Arch: foreign to -doc package
+  * Set maintainer to Debian QA Group <packages@qa.debian.org>
+  * Update Vcs-Browser URL
+
+  [ Laurent Bigonville ]
+  * debian/rules: Fix FTBFS when building arch:all packages only.
+    Thanks to Santiago Vila <sanvila@unex.es> (Closes: #805989)
+  * 0015-debian-nologin-path.patch: Use debian specific path for nologin executable
+    (Closes: #805086)
+  * Drop the -dbg package and rely on the automatically built -dbgsym one
+  * debian/control: Use https for the Vcs-* and Homepage URL's
+  * debian/control: Bump Standards-Version to 3.9.8 (no further changes)
+
+  [ Alessio Treglia ]
+  * Multiarchify-ication.
+
+ -- Dr. Tobias Quathamer <toddy@debian.org>  Sat, 26 Nov 2016 22:28:05 +0100
+
+accountsservice (0.6.40-3) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Alessio Treglia ]
+  * Update b-d according to libsystemd transition.
+  * libaccountsservice-dev dependencies fix.
+
+  [ Michael Biebl ]
+  * Transition to libsystemd. (Closes: #779740)
+
+ -- Michael Biebl <biebl@debian.org>  Thu, 27 Aug 2015 02:45:14 +0200
+
+accountsservice (0.6.40-2) unstable; urgency=medium
+
+  * Build docs unconditionally to prevent FTBFS.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 03 Jun 2015 11:56:11 +0100
+
+accountsservice (0.6.40-1) unstable; urgency=medium
+
+  * New upstream release (Closes: #787581):
+    - Fix SIGSEGV with UID numbers larger than 2^31. (Closes: #759563)
+  * Update patchset against new sources:
+    - Refresh patches.
+    - Drop 1001-buildsystem.patch, seems unnecessary.
+  * Refresh libaccountsservice0.symbols.
+  * Revert "Use ./autogen.sh in dh_autoreconf to fix binary-arch build
+    failure".
+  * Remove debian/clean to avoid deletion of gtk-doc.make.
+  * Update debian/watch
+  * Update Homepage
+  * Bump Standards
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 03 Jun 2015 08:28:07 +0100
+
+accountsservice (0.6.37-3) unstable; urgency=medium
+
+  * Do not override DefaultStandardOutput, it could be helpful for sysadmins
+    to determine how output gets logged. Thanks to Josh Triplett for
+    reporting this. (Closes: #741124)
+  * Refresh 0009-language-tools.patch.
+  * Enable 0009-language-tools.patch. (Closes: #756259)
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 28 Jul 2014 11:43:01 +0100
+
+accountsservice (0.6.37-2) unstable; urgency=medium
+
+  * Point libglib2 build dependency at the proper version.
+    Thanks to Breno Leitao for the report and patch. (Closes: #753415)
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 10 Jul 2014 16:19:39 +0100
+
+accountsservice (0.6.37-1) unstable; urgency=low
+
+  * New upstream release.
+  * Refresh patches.
+  * Drop 9001-memory_leaks.patch, no longer needed.
+  * Disable 2001-filtering_out_users.patch, no longer applicable.
+  * Update libaccountsservice0.symbols file.
+  * Update debian/copyright.
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 01 Apr 2014 14:41:18 +0100
+
+accountsservice (0.6.34-2) unstable; urgency=low
+
+  * Re-enable systemd support (Closes: #723857):
+    - Revert "Disable systemd support:"
+    - Revert "Strip SystemdService out of org.freedesktop.Accounts.service
+      service file."
+    - Enable systemd on Linux only.
+    - Use dh-systemd.
+    - If it is being used, let systemd handle restarting the daemon in
+      maintscripts.
+  * Fix various memory leaks. Thanks to Roberto Paleari for the bug
+    report. (Closes: #723745)
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 21 Sep 2013 22:56:06 +0100
+
+accountsservice (0.6.34-1) unstable; urgency=low
+
+  * New upstream release.
+  * Refresh patches.
+  * Update symbols.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 02 Jul 2013 04:12:44 +0100
+
+accountsservice (0.6.30-2) unstable; urgency=low
+
+  * ACK NMU.
+  * Upload to unstable.
+  * Fix VCS canonical URLs.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 08 May 2013 08:06:25 +0200
+
+accountsservice (0.6.30-1.1) experimental; urgency=low
+
+  * Non-maintainer upload with maintainer approval.
+  * Use ./autogen.sh in dh_autoreconf to fix binary-arch build failure
+
+ -- Andreas Henriksson <andreas@fatal.se>  Mon, 25 Mar 2013 17:44:33 +0100
+
+accountsservice (0.6.30-1) experimental; urgency=low
+
+  * New upstream release:
+    - Minor source clean ups
+    - Crasher fix on 32bit systems (Closes: #694727)
+    - Add get_user_by_id
+    - Don't lose sessions list for users at startup
+    - Add API for detecting when accountsservice is unavailable.
+  * Refresh patches.
+  * Refresh symbols.
+  * Bump build-deps on glib-2.0 >= 2.34.
+  * Add gtk-doc-tools to Build-Depends-Indep.
+  * Build libaccountsservice's documentation. (Closes: #698290)
+  * Enable hardening.
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 14 Dec 2012 09:33:13 +0000
+
+accountsservice (0.6.29-1) experimental; urgency=low
+
+  * New upstream release:
+    - Changes since 0.6.25:
+      + Uninitialized variable fix
+      + Typo fix
+      + Create data dirs just-in-time
+      + Ignore closing sessions for is_logged_in test
+      + Disable NULL user for delete_user call
+      + Translation updates
+    - Changes since 0.6.26:
+      + Require libsystemd-login 186
+      + Protect against deleting root user
+      + Add LoginTime and LoginHistory properties
+      + fix crash consolekit code
+      + fix has_multiple_user property after removing user
+    - Changes since 0.6.27:
+      + Fix warnings when the singleton user manager object is finalized
+      + Generated docs for libaccountsservice
+      + Initialize local_acount to TRUE
+      + Add async api for user creation, caching and deletion
+    - Changes since 0.6.28:
+      + Fix act_user_manager_delete_user_finish
+      + Fix handling of LoginTime and LoginHistory properties
+    - Changes since 0.6.29:
+      + Translate D-Bus errors to local errors in libaccountsservice
+      + Fix a wrong property name n the login history support
+  * Refresh patches.
+  * Update symbols control file.
+  * Don't build gtk-docs for now.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 11 Oct 2012 16:10:45 +0100
+
+accountsservice (0.6.24-1) experimental; urgency=low
+
+  * New upstream release:
+    - add User.Local property for identifying local users
+    - Fix up some debug output
+    - add new CacheUser and UncacheUser apis
+    - uncache user before deleting user
+    - Correct CVE-2012-2737, local file disclosure
+    - small memory leak fix
+    - exclude system accounts from ListCachedUsers
+    - make has-multiple-users properly only check non-system users
+    - remove icon when deleting user
+    - Revert usage of getpwent() as fallback for fgetpwent
+    - support consolekit call cancellation to prevent crashes caused
+      by shortlived sessions
+  * Refresh patches, removed those applied upstream:
+    - 9001-manage_pending_ck_calls_with_cancellable.patch
+    - 9002-memory_leak_actuser.c
+    - 9003-CVE-2012-2737.patch
+  * Refresh symbols file.
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 07 Sep 2012 18:53:51 +0200
+
+accountsservice (0.6.21-8) unstable; urgency=low
+
+  * debian/patches/0007-add-lightdm-support.patch
+    - Properly set gdm3's configuration directory in order to
+      fix autologin settings when gdm3 is used as default login
+      manager. Thanks to Jean-Peer Lorenz (Closes: #680786)
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 02 Jan 2013 13:45:12 +0000
+
+accountsservice (0.6.21-7) unstable; urgency=low
+
+  [ Simon McVittie ]
+  * Don't free ActUserManagerNewSession objects until any pending
+    asynchronous calls to set up the new session have completed or
+    finished being cancelled (Closes: #688413, #683092)
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 03 Nov 2012 11:16:15 +0000
+
+accountsservice (0.6.21-6) unstable; urgency=high
+
+  * CVE-2012-2737: Add patch to prevent race condition with UID
+    lookup (Closes: #679429):
+    - src/u{ser,til}.c: Use bus daemon to query peer credentials.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 10 Jul 2012 17:04:54 +0200
+
+accountsservice (0.6.21-5) unstable; urgency=medium
+
+  * Add patch grabbed from upstream git to fix memory leaks in
+    src/libaccountsservice/act-user.c. Set urgency to medium since the
+    package has already migrated to testing.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 23 Jun 2012 12:46:22 +0200
+
+accountsservice (0.6.21-4) unstable; urgency=low
+
+  * Manage pending consolekit calls with GtkCancellable to fix SIGSEGV
+    in libaccountsservice. (Closes: #673185)
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 13 Jun 2012 09:02:33 +0200
+
+accountsservice (0.6.21-3) unstable; urgency=low
+
+  * Strip SystemdService out of org.freedesktop.Accounts.service
+    service file. (Closes: #675925)
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 07 Jun 2012 15:09:19 +0200
+
+accountsservice (0.6.21-2) unstable; urgency=low
+
+  * Disable systemd support:
+    - Let accountsservice build on non-Linux (Closes: #674433)
+    - Attempt to solve #673185
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 02 Jun 2012 22:59:49 +0200
+
+accountsservice (0.6.21-1) unstable; urgency=low
+
+  * New upstream release.
+  * Refresh patches.
+  * Add libaccountsservice-dbg package.
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 18 May 2012 17:23:55 +0200
+
+accountsservice (0.6.18-3) unstable; urgency=low
+
+  * Revert upstream commit 552a0c856a6e3a7c2e6450ab80e79f4204062281
+    and then fix a regression introduced since 0.6.16:
+    - Filter out users which have UIDs lower than UID_MIN specified
+      in etc/login.defs instead of checking if they have
+      /usr/sbin/nologin as login shell. (Closes: #673095)
+    Thanks to Michael Biebl for the report.
+
+ -- Alessio Treglia <alessio@debian.org>  Wed, 16 May 2012 09:52:58 +0200
+
+accountsservice (0.6.18-2) unstable; urgency=low
+
+  * Upload to unstable.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 15 May 2012 07:48:08 +0200
+
+accountsservice (0.6.18-1) experimental; urgency=low
+
+  * Upload to experimental due to the big amount of changes.
+  * Imported Upstream version 0.6.18:
+    - Fix systemd configure check
+    - Add a few more common system accounts to the blacklist
+    - Fix some issues in systemd session handling
+  * Imported Upstream version 0.6.17:
+    - Fix user filtering which was broken in 0.6.16.
+    - Fix double free in user code.
+  * Imported Upstream version 0.6.16:
+    - Don't filter out users below UID_MIN in login.defs
+    - Filter out users with invalid shells
+    - build fixes for srcdir != builddir
+    - Port to GDBus
+    - Add systemd support
+    - vala support and introspection fixes
+    - ppc32 fixes
+    - use infinite timeout for ListCachedUsers calls
+    - Translation updates
+  * Migrate 0007-add-lightdm-support.patch to GDBus:
+    - More testing would be appreciated.
+  * Remove 2001-icon_reset.patch, applied upstream.
+  * Remove 3001-show_more_than_one_user_powerpc.patch, applied upstream.
+  * Remove obsolete patches:
+    - 0003-getpwnam_null_crash.patch
+    - 0004-history-filter-sessions.patch
+  * Refresh systemd's build-deps.
+  * Drop {,build-}dependency on libdbus-glib-1-dev.
+  * Refresh symbols.
+  * Refresh debian/copyright.
+  * Update debian/watch.
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 30 Apr 2012 13:19:46 +0200
+
+accountsservice (0.6.15-4) unstable; urgency=low
+
+  * src/user.c: Be more careful when resetting the users icons
+    - When the current icon is in /usr/share, and we reset the icon, we try
+      to delete a nonexisting icon file in /var/lib/AccountsService/icons.
+      Deal with this eventuality.
+  * fix compute_object_path on powerpc (Closes: #635168)
+    - long isn't necessarily 64bit.  On big endian architectures, where it's
+      smaller than 64bit, the compute_object_path function will get computed
+      incorrectly; thanks to Ray Strode and Michel Dänzer.
+  * Apply 2001-icon_reset.patch,3001-show_more_than_one_user_powerpc.patch on
+    Ubuntu too.
+  * Integrate Ubuntu patches and apply them in debian/patches/ubuntu.series
+    (for Ubuntu only):
+    - 0001-formats-locale-property.patch
+    - 0002-create-and-manage-groups-like-on-a-ubuntu-system.patch
+    - 0005-gdm_config_file_path_ubuntu.patch
+    - 0008-nopasswdlogin-group.patch
+    - 0009-language-tools.patch
+    - 0010-set-language.patch
+    - 0011-add-background-file-support.patch
+    - 0012-add-keyboard-layout-support.patch
+    - 0013-add-has-message-support.patch
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 19 Feb 2012 00:37:07 +0100
+
+accountsservice (0.6.15-3) unstable; urgency=low
+
+  * Move GIR package into the new section "introspection".
+  * debian/patches/0011-add-background-file-support.patch
+    - Add support for a BackgroundFile property, similar to IconFile.
+      Apply on Ubuntu only. (LP: #844081)
+  * Fix file permissions bypass (LP: #904395), applies on Ubuntu only:
+    - debian/patches/0010-set-language.patch:
+      Drop privileges before letting help scripts in
+      /usr/share/language-tools write to $HOME.
+    - debian/patches/0009-language-tools.patch:
+      Drop chown() call in /usr/share/language-tools/save-to-profile.
+      CVE-2011-4406
+  * Refresh patches.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 31 Jan 2012 17:41:50 +0100
+
+accountsservice (0.6.15-2) unstable; urgency=low
+
+  [ Gunnar Hjalmarsson ]
+  * 0009-language-tools.patch: Sort the list of language options, for the
+    language chooser in LightDM (LP: #868346).
+
+  [ Martin Pitt ]
+  * 0002-create-and-manage-groups-like-on-a-ubuntu-system.patch: Use "sudo"
+    group instead of "admin", for Debian/sudo compatibility. However, keep
+    recognizing "admin" as administrator, too. (LP: #893842)
+
+ -- Martin Pitt <mpitt@debian.org>  Fri, 25 Nov 2011 08:28:18 +0100
+
+accountsservice (0.6.15-1) unstable; urgency=low
+
+  [ Alessio Treglia ]
+  * New upstream release:
+    - fix build on FreeBSD and OpenBSD
+    - only accept regular files as icons
+    - don't track non-graphical sessions
+    - fix wtmp handling
+  * Refresh Debian's patches.
+  * Refresh Ubuntu's patches.
+  * Update debian/copyright to comply with DEP-4 rev-174.
+
+  [ Martin Pitt ]
+  * 0002-create-and-manage-groups-like-on-a-ubuntu-system.patch: Add admin
+    users to the same groups as Ubiquity, i. e. add "adm", "lpadmin", and
+    "sambashare". Patch by Rodrigo Moya. (LP #810907)
+  * Add 0007-add-lightdm-support.patch: Support setting/reading LightDM
+    autologin settings. Patch by Mike Terry. Applied to both Debian and Ubuntu
+    builds. (fd.o #40020, LP#798962)
+  * Add 0008-nopasswdlogin-group.patch: When setting a user to have no
+    password, also add them to the 'nopasswdlogin' group. Patch by Mike Terry.
+    (Applied for Ubuntu only.) (LP #815271)
+  * Add 0009-language-tools.patch: Helper scripts for managing the language
+    environment are made available in /usr/share/language-tools. They are
+    supporting accountsservice's "SetLanguage" method, but for now some of the
+    files may also be called from other packages directly. Patch by Gunnar
+    Hjalmarsson. (Applied for Ubuntu only.)
+  * Add 0010-set-language.patch: When a new language is set, update the user's
+    ~/.profile file with the corresponding environment variables.
+    Patch by Gunnar Hjalmarsson. (Applied for Ubuntu only.)
+  * debian/rules: Install language tools, when built.
+  * 0002-create-and-manage-groups-like-on-a-ubuntu-system.patch:
+    - Add admin users to the same groups as Ubiquity, i. e. add "adm",
+      "lpadmin", and "sambashare". Patch by Rodrigo Moya. (LP #810907)
+  * Add 0008-nopasswdlogin-group.patch: When setting a user to have no
+    password, also add them to the 'nopasswdlogin' group. Patch by Mike
+    Terry. (Applied for Ubuntu only.) (LP #815271)
+  * Add Ubuntu patches for writing "SetLanguage" values to ~/.profile.
+  * Add 0007-add-lightdm-support.patch: Support setting/reading LightDM
+    autologin settings. Patch by Mike Terry. Applied to both Debian and Ubuntu
+    builds. (fd.o #40020, LP#798962)
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 18 Oct 2011 21:50:35 +0200
+
+accountsservice (0.6.14-1) unstable; urgency=low
+
+  * New upstream release:
+    - ignore extraneous SetAutomaticLogin(false) calls for a user
+    - monitor /etc/gdm/custom.conf for changes in autologin config
+    - fix fast user switching
+    - fix docs to build
+    - translation updates
+  * Refresh Debian's series of patches.
+  * Refresh Ubuntu's series of patches.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 05 Sep 2011 23:55:45 +0200
+
+accountsservice (0.6.13-1) unstable; urgency=low
+
+  * New upstream release:
+    - honor aclocal flags environment variable
+    - set log domain so it can be hushed
+    - use wtmp instead of consolekit for determining login frequency
+      + Use the POSIX wtmpx database instead of ConsoleKit as source for
+        calculating login frequency. This is more portable and much
+        simpler. Also, it allows us to prepare accountsservice for the
+        post-CK times. (upstream bug: https://bugs.freedesktop.org/39295)
+    - leak and warning fixes
+    - clean up polkit deprectation warnings
+    - add '--' before username to account helper programs
+  * Dropped patches (they don't apply for now):
+    - 0001-do-not-consider-system-users-returned-from-consolekit.patch
+    - 0003-getpwnam_null_crash.patch
+    - 0004-history-filter-sessions.patch
+  * Refreshed:
+    - 0002-create-and-manage-groups-like-on-a-{debian,ubuntu}-system.patch
+    - 0005-gdm_config_file_path.patch
+  * Update symbols.
+  * debian/patches/0006-adduser_instead_of_useradd.patch
+    - Replace useradd with adduser to comply with Debian Policy.
+      In collaboration with Ubuntu, thanks to Sebastien Bacher and other
+      Ubuntu guys (LP: #810907).
+  * Remove the dummy package gir1.2-accountservice-1.0, the previous version
+    has already reached Wheezy and there is no reverse dependencies.
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 25 Jul 2011 12:17:33 +0200
+
+accountsservice (0.6.12-5) unstable; urgency=low
+
+  [ Martin Pitt ]
+  * debian/control: Add missing Breaks/Replaces: to
+    gir1.2-accountsservice-1.0 for the package renaming.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 09 Jul 2011 09:18:25 +0200
+
+accountsservice (0.6.12-4) unstable; urgency=low
+
+  * Fix mistake in the name of a runtime package:
+    - Rename gir1.2-accountservice-1.0 to gir1.2-accountsservice-1.0.
+    - Introduce a transitional dummy package for a tiny-and-smooth transition.
+  * Enable parallel building.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 30 Jun 2011 10:38:40 +0200
+
+accountsservice (0.6.12-3) unstable; urgency=low
+
+  * Add accountsservice.{postinst,prerm} scripts to properly shut down
+    the daemon on package upgrade and removal (Closes: #630577);
+    thanks to Rodrigo Moya for the patch.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 16 Jun 2011 11:09:34 +0200
+
+accountsservice (0.6.12-2) unstable; urgency=low
+
+  * Disable 0005-gdm_config_file_path.patch in debian/patches/ubuntu.series as
+    it doesn't apply to Ubuntu.
+  * On Ubuntu apply 0002-create-and-manage-groups-like-on-a-ubuntu-system.patch
+    instead of 0002-create-and-manage-groups-like-on-a-debian-system.patch
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 05 Jun 2011 12:40:37 +0200
+
+accountsservice (0.6.12-1) unstable; urgency=low
+
+  * New upstream bugfix release.
+  * Update symbols.
+  * Fix path to the GDM configuration file, which is different
+    in Debian (Closes: #627311).
+  * Refresh patches.
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 22 May 2011 10:21:10 +0200
+
+accountsservice (0.6.10-1) unstable; urgency=low
+
+  * New upstream release:
+    - An assortment of race fixes.
+    - Translation updates.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 07 May 2011 13:02:07 +0200
+
+accountsservice (0.6.9-2) unstable; urgency=low
+
+  * Small change to reload_ck_history in order to make accountsservice
+    filter by 'x11' session type (Closes: #624474);
+    thanks to Josselin Mouette for the report and patch.
+  * Bump Standards.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 28 Apr 2011 20:03:07 +0200
+
+accountsservice (0.6.9-1) unstable; urgency=low
+
+  * New upstream release.
+  * Refresh patches.
+  * Update symbols file.
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 26 Apr 2011 08:20:11 +0200
+
+accountsservice (0.6.8-2) unstable; urgency=low
+
+  * Upload to unstable.
+  * Add patch to prevent crash due to getpwnam returning a NULL pointer.
+    Thanks to Mattias Eriksson for the patch.
+  * Add symbols file.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 14 Apr 2011 11:01:37 +0200
+
+accountsservice (0.6.8-1) experimental; urgency=low
+
+  * Imported Upstream version 0.6.8.
+  * Refresh patches.
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 08 Apr 2011 09:51:48 +0200
+
+accountsservice (0.6.6-4) experimental; urgency=low
+
+  [ Josselin Mouette ]
+  * 0002-create-and-manage-groups-like-on-a-debian-system.patch:
+    - fixed  to not add user to useless group, and to use sudo instead of
+      admin (Closes: #619914).
+
+ -- Alessio Treglia <alessio@debian.org>  Tue, 29 Mar 2011 11:44:39 +0200
+
+accountsservice (0.6.6-3) experimental; urgency=low
+
+  * Pass systemd unit dir to the configure script to properly provide
+    service file (Closes: #619796); thanks to Alban Browaeys for the
+    report.
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 27 Mar 2011 10:11:39 +0200
+
+accountsservice (0.6.6-2) experimental; urgency=low
+
+  * Rename 0001-buildsystem.patch -> 1001-buildsystem.patch
+  * Match Debian user/groups system;
+    thanks to Frederic Peters for the patchset (Closes: #618764):
+    - 0001-do-not-consider-system-users-returned-from-consolekit.patch.
+    - 0002-create-and-manage-groups-like-on-a-debian-system.patch.
+
+ -- Alessio Treglia <alessio@debian.org>  Sat, 19 Mar 2011 10:39:28 +0100
+
+accountsservice (0.6.6-1) experimental; urgency=low
+
+  * New upstream release.
+
+ -- Alessio Treglia <alessio@debian.org>  Fri, 18 Mar 2011 10:28:02 +0100
+
+accountsservice (0.6.5-2) experimental; urgency=low
+
+  * Switch libaccountsservice-dev to architecture 'any';
+    also closes: #618643.
+
+ -- Alessio Treglia <alessio@debian.org>  Thu, 17 Mar 2011 11:20:19 +0100
+
+accountsservice (0.6.5-1) experimental; urgency=low
+
+  * New upstream release.
+  * Update build-dependencies.
+  * Switch to dh-autoreconf.
+  * Provide po/Makefile.in.in
+  * Don't build static libraries
+  * Split files in several packages:
+    - accountsservice to provide the runtime service files.
+    - libaccountsservice0 to provide the shared libraries.
+    - libaccountsservice-dev to provide the development files.
+    - gir1.0-accountservice-1.0 to provide GObject introspection
+      data files.
+
+ -- Alessio Treglia <alessio@debian.org>  Sun, 13 Mar 2011 11:10:25 +0100
+
+accountsservice (0.6.1-1) unstable; urgency=low
+
+  * Initial release (Closes: #606002).
+
+ -- Alessio Treglia <alessio@debian.org>  Mon, 17 Jan 2011 10:14:35 +0100

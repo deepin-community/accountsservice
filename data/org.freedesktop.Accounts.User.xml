@@ -661,6 +661,19 @@
     <arg name="days_after_expiration_until_lock" direction="out" type="x"/>
   </method>
 
+  <method name="SetPasswordExpirationPolicy">
+    <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+    <arg name="min_days_between_changes" direction="in" type="x"/>
+    <arg name="max_days_between_changes" direction="in" type="x"/>
+    <arg name="days_to_warn" direction="in" type="x"/>
+    <arg name="days_after_expiration_until_lock" direction="in" type="x"/>
+  </method>
+
+  <method name="SetUserExpirationPolicy">
+    <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+    <arg name="expiration_time" direction="in" type="x"/>
+  </method>
+
   <property name="Uid" type="t" access="read">
     <doc:doc>
       <doc:description>
@@ -812,6 +825,7 @@
   </property>
 
   <property name="LoginHistory" type="a(xxa{sv})" access="read">
+    <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal" value="false"/>
     <doc:doc>
       <doc:description>
         <doc:para>

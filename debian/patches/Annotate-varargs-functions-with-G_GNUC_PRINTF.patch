@@ -1,0 +1,62 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Tue, 7 Feb 2023 11:39:29 +0000
+Subject: Annotate varargs functions with G_GNUC_PRINTF
+
+This lets the compiler detect and diagnose type mismatches like the one
+fixed in the previous commit.
+
+Bug: https://gitlab.freedesktop.org/accountsservice/accountsservice/-/issues/109
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Forwarded: https://gitlab.freedesktop.org/accountsservice/accountsservice/-/merge_requests/120
+Applied-upstream: 23.0, commit:c142812f7653cd1f6e52224da8410cd09f102a4f
+---
+ src/daemon.c | 5 +++++
+ src/user.c   | 5 +++++
+ src/util.h   | 2 +-
+ 3 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/src/daemon.c b/src/daemon.c
+index 9a2b897..c29a8cf 100644
+--- a/src/daemon.c
++++ b/src/daemon.c
+@@ -840,6 +840,11 @@ daemon_new (void)
+         return g_steal_pointer (&daemon);
+ }
+ 
++static void throw_error (GDBusMethodInvocation *context,
++                         gint                   error_code,
++                         const gchar           *format,
++                         ...) G_GNUC_PRINTF (3, 4);
++
+ static void
+ throw_error (GDBusMethodInvocation *context,
+              gint                   error_code,
+diff --git a/src/user.c b/src/user.c
+index 5e4ed97..e33980d 100644
+--- a/src/user.c
++++ b/src/user.c
+@@ -1097,6 +1097,11 @@ user_set_saved (User     *user,
+         accounts_user_set_saved (ACCOUNTS_USER (user), saved);
+ }
+ 
++static void throw_error (GDBusMethodInvocation *context,
++                         gint                   error_code,
++                         const gchar           *format,
++                         ...) G_GNUC_PRINTF (3, 4);
++
+ static void
+ throw_error (GDBusMethodInvocation *context,
+              gint                   error_code,
+diff --git a/src/util.h b/src/util.h
+index 3f05c45..61dcf44 100644
+--- a/src/util.h
++++ b/src/util.h
+@@ -28,7 +28,7 @@ G_BEGIN_DECLS
+ 
+ void sys_log (GDBusMethodInvocation *context,
+               const gchar           *format,
+-                                     ...);
++                                     ...) G_GNUC_PRINTF (2, 3);
+ 
+ gboolean get_caller_uid (GDBusMethodInvocation *context, gint *uid);
+ 

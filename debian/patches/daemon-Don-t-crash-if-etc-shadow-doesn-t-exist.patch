@@ -1,0 +1,41 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Fri, 17 Feb 2023 23:59:12 +0000
+Subject: daemon: Don't crash if /etc/shadow doesn't exist
+
+Turning off shadow passwords with `shadowconfig off` or `pwunconv` is
+something that distributions still at least half-support, and
+apparently some people genuinely do this. In this situation, treat all
+users as non-local (until cached) but don't crash.
+
+Bug-Debian: https://bugs.debian.org/1031309
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Forwarded: https://gitlab.freedesktop.org/accountsservice/accountsservice/-/merge_requests/121
+Applied-upstream: 23.0, commit:322165ea2e1c1c4715d532910ccb31b3d1e0a04e
+---
+ src/daemon.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/src/daemon.c b/src/daemon.c
+index c29a8cf..8fd91fe 100644
+--- a/src/daemon.c
++++ b/src/daemon.c
+@@ -494,7 +494,6 @@ reload_users (Daemon *daemon)
+ 
+         /* Load the local users into our hash tables */
+         load_entries (daemon, users, FALSE, entry_generator_fgetpwent, &local);
+-        g_assert (local != NULL);
+ 
+         /* Now add/update users from other sources, possibly non-local */
+         load_entries (daemon, users, TRUE, entry_generator_cachedir, NULL);
+@@ -510,9 +509,9 @@ reload_users (Daemon *daemon)
+                 User *user = value;
+                 if (!user_get_system_account (user))
+                         number_of_normal_users++;
+-                user_update_local_account_property (user, g_hash_table_lookup (local, name) != NULL);
++                user_update_local_account_property (user, local != NULL && g_hash_table_lookup (local, name) != NULL);
+         }
+-        g_hash_table_destroy (local);
++        g_clear_pointer (&local, g_hash_table_destroy);
+ 
+         had_no_users = accounts_accounts_get_has_no_users (accounts);
+         has_no_users = number_of_normal_users == 0;
