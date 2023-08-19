@@ -1,0 +1,134 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Tue, 7 Feb 2023 11:38:12 +0000
+Subject: user: Use correct format strings to print accounts_user_get_uid()
+
+The Uid property is defined in the D-Bus introspection XML to be a
+64-bit unsigned integer, so we need to treat it as such when using
+varargs. Otherwise, architectures that do not align arguments on the
+stack at 64-bit boundaries can parse the stack incorrectly, resulting
+in a crash.
+
+For whatever obscure ABI reason, among Debian's supported architectures
+this only showed up as a segmentation fault on 32-bit ARM (specifically
+ARMv5 softfloat and ARMv7 hardfloat), and not on (for example) i386.
+
+Bug: https://gitlab.freedesktop.org/accountsservice/accountsservice/-/issues/109
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Forwarded: https://gitlab.freedesktop.org/accountsservice/accountsservice/-/merge_requests/120
+Applied-upstream: 23.0, commit:a1a330b8720e4bc1c2154f120196372627dc7b2a
+---
+ src/user.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/src/user.c b/src/user.c
+index 3e312c4..5e4ed97 100644
+--- a/src/user.c
++++ b/src/user.c
+@@ -1128,7 +1128,7 @@ user_change_real_name_authorized_cb (Daemon                *daemon,
+ 
+         if (g_strcmp0 (accounts_user_get_real_name (ACCOUNTS_USER (user)), name) != 0) {
+                 sys_log (context,
+-                         "change real name of user '%s' (%d) to '%s'",
++                         "change real name of user '%s' (%" G_GUINT64_FORMAT ") to '%s'",
+                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                          accounts_user_get_uid (ACCOUNTS_USER (user)),
+                          name);
+@@ -1213,7 +1213,7 @@ user_change_user_name_authorized_cb (Daemon                *daemon,
+         if (g_strcmp0 (accounts_user_get_user_name (ACCOUNTS_USER (user)), name) != 0) {
+                 old_name = g_strdup (accounts_user_get_user_name (ACCOUNTS_USER (user)));
+                 sys_log (context,
+-                         "change name of user '%s' (%d) to '%s'",
++                         "change name of user '%s' (%" G_GUINT64_FORMAT ") to '%s'",
+                          old_name,
+                          accounts_user_get_uid (ACCOUNTS_USER (user)),
+                          name);
+@@ -1591,7 +1591,7 @@ user_set_password_expiration_policy_authorized_cb (Daemon                *daemon
+         const gchar *argv[11];
+ 
+         sys_log (context,
+-                 "set password expiration policy of user '%s' (%d)",
++                 "set password expiration policy of user '%s' (%" G_GUINT64_FORMAT ")",
+                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                  accounts_user_get_uid (ACCOUNTS_USER (user)));
+ 
+@@ -1671,7 +1671,7 @@ user_set_user_expiration_policy_authorized_cb (Daemon                *daemon,
+         const gchar *argv[5];
+ 
+         sys_log (context,
+-                 "set user expiration policy of user '%s' (%d)",
++                 "set user expiration policy of user '%s' (%" G_GUINT64_FORMAT ")",
+                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                  accounts_user_get_uid (ACCOUNTS_USER (user)));
+ 
+@@ -1791,7 +1791,7 @@ user_change_home_dir_authorized_cb (Daemon                *daemon,
+ 
+         if (g_strcmp0 (accounts_user_get_home_directory (ACCOUNTS_USER (user)), home_dir) != 0) {
+                 sys_log (context,
+-                         "change home directory of user '%s' (%d) to '%s'",
++                         "change home directory of user '%s' (%" G_GUINT64_FORMAT ") to '%s'",
+                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                          accounts_user_get_uid (ACCOUNTS_USER (user)),
+                          home_dir);
+@@ -1847,7 +1847,7 @@ user_change_shell_authorized_cb (Daemon                *daemon,
+ 
+         if (g_strcmp0 (accounts_user_get_shell (ACCOUNTS_USER (user)), shell) != 0) {
+                 sys_log (context,
+-                         "change shell of user '%s' (%d) to '%s'",
++                         "change shell of user '%s' (%" G_GUINT64_FORMAT ") to '%s'",
+                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                          accounts_user_get_uid (ACCOUNTS_USER (user)),
+                          shell);
+@@ -2069,7 +2069,7 @@ user_change_locked_authorized_cb (Daemon                *daemon,
+ 
+         if (accounts_user_get_locked (ACCOUNTS_USER (user)) != locked) {
+                 sys_log (context,
+-                         "%s account of user '%s' (%d)",
++                         "%s account of user '%s' (%" G_GUINT64_FORMAT ")",
+                          locked ? "locking" : "unlocking",
+                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                          accounts_user_get_uid (ACCOUNTS_USER (user)));
+@@ -2154,7 +2154,7 @@ user_change_account_type_authorized_cb (Daemon                *daemon,
+ 
+         if (((AccountType) accounts_user_get_account_type (ACCOUNTS_USER (user))) != account_type) {
+                 sys_log (context,
+-                         "change account type of user '%s' (%d) to %d",
++                         "change account type of user '%s' (%" G_GUINT64_FORMAT ") to %d",
+                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                          accounts_user_get_uid (ACCOUNTS_USER (user)),
+                          account_type);
+@@ -2252,7 +2252,7 @@ user_change_password_mode_authorized_cb (Daemon                *daemon,
+ 
+         if (((PasswordMode) accounts_user_get_password_mode (ACCOUNTS_USER (user))) != mode) {
+                 sys_log (context,
+-                         "change password mode of user '%s' (%d) to %d",
++                         "change password mode of user '%s' (%" G_GUINT64_FORMAT ") to %d",
+                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                          accounts_user_get_uid (ACCOUNTS_USER (user)),
+                          mode);
+@@ -2376,7 +2376,7 @@ user_change_password_authorized_cb (Daemon                *daemon,
+         char loginuid[20];
+ 
+         sys_log (context,
+-                 "set password and hint of user '%s' (%d)",
++                 "set password and hint of user '%s' (%" G_GUINT64_FORMAT ")",
+                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                  accounts_user_get_uid (ACCOUNTS_USER (user)));
+ 
+@@ -2463,7 +2463,7 @@ user_change_password_hint_authorized_cb (Daemon                *daemon,
+         gchar *hint = data;
+ 
+         sys_log (context,
+-                 "set password hint of user '%s' (%d)'",
++                 "set password hint of user '%s' (%" G_GUINT64_FORMAT ")'",
+                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                  accounts_user_get_uid (ACCOUNTS_USER (user)));
+ 
+@@ -2516,7 +2516,7 @@ user_change_automatic_login_authorized_cb (Daemon                *daemon,
+         g_autoptr(GError) error = NULL;
+ 
+         sys_log (context,
+-                 "%s automatic login for user '%s' (%d)",
++                 "%s automatic login for user '%s' (%" G_GUINT64_FORMAT ")",
+                  enabled ? "enable" : "disable",
+                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                  accounts_user_get_uid (ACCOUNTS_USER (user)));

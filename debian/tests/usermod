@@ -1,0 +1,32 @@
+#!/bin/sh
+# usermod(8) wrapper for use by debian/tests/integration.py
+#
+# Copyright 2023 Simon McVittie
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+LOG='/run/accountsservice-integration-test.log'
+
+echo "invoked usermod: $0 $*" >> "$LOG"
+echo "loginuid is $(cat /proc/self/loginuid)" >> "$LOG"
+
+next_is_password=
+
+for arg in "$@"; do
+    if [ -n "$next_is_password" ]; then
+        case "$arg" in
+            (*'$'*)
+                echo "Looks like CVE-2012-6655!" >> "$LOG"
+                ;;
+        esac
+
+        next_is_password=
+    else
+        case "$arg" in
+            (-p)
+                next_is_password=yes
+                ;;
+        esac
+    fi
+done
+
+exec /usr/sbin/usermod.distrib "$@"

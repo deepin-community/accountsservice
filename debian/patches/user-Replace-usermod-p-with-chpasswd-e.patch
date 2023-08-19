@@ -1,0 +1,161 @@
+From: Simon McVittie <smcv@debian.org>
+Date: Fri, 3 Feb 2023 21:06:38 +0000
+Subject: user: Replace usermod -p with chpasswd -e
+
+Writing the password to chpasswd's standard input avoids it becoming
+visible in `/proc/$pid/cmdline` (CVE-2012-6655).
+
+Bug: https://gitlab.freedesktop.org/accountsservice/accountsservice/-/issues/8
+Bug-Debian: https://bugs.debian.org/757912
+Signed-off-by: Simon McVittie <smcv@debian.org>
+Forwarded: https://gitlab.freedesktop.org/accountsservice/accountsservice/-/merge_requests/118
+Applied-upstream: 23.0, commit:4fde420a7b25d1a54bdb4e4ade67770a5ac79d02
+[backported: continue to try to set loginuid for parity with existing code]
+---
+ src/user.c | 45 +++++++++++++++++++++++++++++----------------
+ src/util.c |  6 +++---
+ src/util.h |  5 +++++
+ 3 files changed, 37 insertions(+), 19 deletions(-)
+
+diff --git a/src/user.c b/src/user.c
+index 199e54d..3e312c4 100644
+--- a/src/user.c
++++ b/src/user.c
+@@ -2354,6 +2354,13 @@ user_set_password_mode (AccountsUser          *auser,
+         return TRUE;
+ }
+ 
++static void
++free_passwords (gchar **strings)
++{
++        memset (strings[0], 0, strlen (strings[0]));
++        g_strfreev (strings);
++}
++
+ static void
+ user_change_password_authorized_cb (Daemon                *daemon,
+                                     User                  *user,
+@@ -2363,7 +2370,10 @@ user_change_password_authorized_cb (Daemon                *daemon,
+ {
+         gchar **strings = data;
+         g_autoptr(GError) error = NULL;
+-        const gchar *argv[6];
++        g_autoptr(GSubprocess) process = NULL;
++        g_autoptr(GSubprocessLauncher) launcher = NULL;
++        const char *argv[] = { "/usr/sbin/chpasswd", "-e", NULL };
++        char loginuid[20];
+ 
+         sys_log (context,
+                  "set password and hint of user '%s' (%d)",
+@@ -2372,14 +2382,22 @@ user_change_password_authorized_cb (Daemon                *daemon,
+ 
+         g_object_freeze_notify (G_OBJECT (user));
+ 
+-        argv[0] = "/usr/sbin/usermod";
+-        argv[1] = "-p";
+-        argv[2] = strings[0];
+-        argv[3] = "--";
+-        argv[4] = accounts_user_get_user_name (ACCOUNTS_USER (user));
+-        argv[5] = NULL;
++        get_caller_loginuid (context, loginuid, G_N_ELEMENTS (loginuid));
++        launcher = g_subprocess_launcher_new (G_SUBPROCESS_FLAGS_STDIN_PIPE);
++        g_subprocess_launcher_set_child_setup (launcher, setup_loginuid, loginuid, NULL);
++        process = g_subprocess_launcher_spawnv (launcher, argv, &error);
+ 
+-        if (!spawn_with_login_uid (context, argv, &error)) {
++        if (process == NULL) {
++                throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
++                return;
++        }
++
++        if (!g_subprocess_communicate_utf8 (process, strings[0], NULL, NULL, NULL, &error)) {
++                throw_error (context, ERROR_FAILED, "writing input to '%s' failed: %s", argv[0], error->message);
++                return;
++        }
++
++        if (!compat_check_exit_status (g_subprocess_get_status (process), &error)) {
+                 throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
+                 return;
+         }
+@@ -2395,13 +2413,6 @@ user_change_password_authorized_cb (Daemon                *daemon,
+         accounts_user_complete_set_password (ACCOUNTS_USER (user), context);
+ }
+ 
+-static void
+-free_passwords (gchar **strings)
+-{
+-        memset (strings[0], 0, strlen (strings[0]));
+-        g_strfreev (strings);
+-}
+-
+ static gboolean
+ user_set_password (AccountsUser          *auser,
+                    GDBusMethodInvocation *context,
+@@ -2419,7 +2430,9 @@ user_set_password (AccountsUser          *auser,
+         }
+ 
+         data = g_new (gchar *, 3);
+-        data[0] = g_strdup (password);
++        data[0] = g_strdup_printf ("%s:%s\n",
++                                   accounts_user_get_user_name (ACCOUNTS_USER (user)),
++                                   password);
+         data[1] = g_strdup (hint);
+         data[2] = NULL;
+ 
+diff --git a/src/util.c b/src/util.c
+index e8a70de..94d96d2 100644
+--- a/src/util.c
++++ b/src/util.c
+@@ -155,7 +155,7 @@ sys_log (GDBusMethodInvocation *context,
+         syslog (LOG_NOTICE, "%s", msg);
+ }
+ 
+-static void
++void
+ get_caller_loginuid (GDBusMethodInvocation *context, gchar *loginuid, gint size)
+ {
+         GPid pid;
+@@ -181,7 +181,7 @@ get_caller_loginuid (GDBusMethodInvocation *context, gchar *loginuid, gint size)
+         }
+ }
+ 
+-static gboolean
++gboolean
+ compat_check_exit_status (int      estatus,
+                           GError **error)
+ {
+@@ -207,7 +207,7 @@ compat_check_exit_status (int      estatus,
+ #endif
+ }
+ 
+-static void
++void
+ setup_loginuid (gpointer data)
+ {
+         const char *id = data;
+diff --git a/src/util.h b/src/util.h
+index 1af46dd..3f05c45 100644
+--- a/src/util.h
++++ b/src/util.h
+@@ -32,9 +32,11 @@ void sys_log (GDBusMethodInvocation *context,
+ 
+ gboolean get_caller_uid (GDBusMethodInvocation *context, gint *uid);
+ 
++void get_caller_loginuid (GDBusMethodInvocation *context, gchar *loginuid, gint size);
+ gboolean spawn_with_login_uid (GDBusMethodInvocation  *context,
+                                const gchar            *argv[],
+                                GError                **error);
++void setup_loginuid (gpointer data);
+ 
+ gboolean get_admin_groups (gid_t  *admin_gid_out,
+                            gid_t **groups_out,
+@@ -44,6 +46,9 @@ gint get_user_groups (const gchar  *username,
+                       gid_t         group,
+                       gid_t       **groups);
+ 
++gboolean compat_check_exit_status (int      estatus,
++                                   GError **error);
++
+ G_END_DECLS
+ 
+ #endif /* __UTIL_H__ */
