@@ -1,0 +1,72 @@
+variables:
+  DEPENDENCIES: dbus-devel
+                gcc
+                gettext-devel
+                git
+                glib-devel
+                gobject-introspection-devel
+                gtk-doc
+                make
+                meson
+                ninja-build
+                polkit-devel
+                redhat-rpm-config
+                systemd
+                systemd-devel
+                vala
+  TEST_DEPENDENCIES: gcovr
+                     glibc-all-langpacks
+                     patchutils
+                     python3-dbusmock
+                     python3-gobject-base
+                     uncrustify
+                     valgrind
+
+stages:
+  - build
+  - test
+
+build-fedora:
+  image: fedora:rawhide
+  stage: build
+  before_script:
+    - unset CI_JOB_JWT
+    - dnf install -y $DEPENDENCIES $([ $CI_JOB_STAGE = test ] && echo $TEST_DEPENDENCIES)
+  script:
+    - meson -Dgtk_doc=true _build
+    - ninja -C _build all
+  artifacts:
+    name: log-and-build
+    when: always
+    paths:
+      - _build/meson-logs
+  only:
+    - merge_requests
+
+test-fedora:
+  extends:
+    - build-fedora
+  stage: test
+  script:
+    - useradd -u 5555 -ms /bin/bash user
+    - su user -c .ci/run-tests.sh
+    - cp -r "/home/user/${CI_PROJECT_NAME}/_build/" ./
+    - .ci/fail_skipped_tests.py _build/meson-logs/testlog.junit.xml
+    - cat _build/meson-logs/coverage.txt
+  artifacts:
+    name: log-and-coverage
+    when: always
+    paths:
+      - _build/meson-logs
+  only:
+    - merge_requests
+
+#build-ubuntu:
+#  image: ubuntu:rolling
+#  before_script:
+#    - apt-get update
+#    - apt-get install -q -y --no-install-recommends meson ninja-build gobject-introspection gtk-doc-tools gettext libglib2.0-dev libpolkit-gobject-1-dev libsystemd-dev libdbus-1-dev
+#  script:
+#    - meson -Dgtk_doc=true _build
+#    - ninja -C _build all
+

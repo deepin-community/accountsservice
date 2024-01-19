@@ -19,10 +19,7 @@
  * Written by: Matthias Clasen <mclasen@redhat.com>
  */
 
-#ifndef __TYPES_H__
-#define __TYPES_H__
+#pragma once
 
 typedef struct Daemon Daemon;
 typedef struct User User;
-
-#endif

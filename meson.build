@@ -1,6 +1,6 @@
 project(
   'accountsservice', 'c',
-  version: run_command(['./generate-version.sh']).stdout().strip(),
+  version: run_command(['./generate-version.sh'], check: true).stdout().strip(),
   license: 'GPL3+',
   default_options: 'buildtype=debugoptimized',
   meson_version: '>= 0.50.0',
@@ -79,6 +79,7 @@ endforeach
 
 if cc.has_header_symbol('utmpx.h', 'WTMPX_FILENAME', prefix: '#define _GNU_SOURCE')
   code = '''#define _GNU_SOURCE
+  #include <stdio.h>
   #include <utmpx.h>
   int main (int argc, char **argv) {
     printf ("%s\n", WTMPX_FILENAME);
@@ -91,6 +92,7 @@ if cc.has_header_symbol('utmpx.h', 'WTMPX_FILENAME', prefix: '#define _GNU_SOURC
   config_h.set('PATH_WTMP', 'WTMPX_FILENAME')
 elif cc.has_header_symbol('paths.h', '_PATH_WTMPX')
   code = '''#include <paths.h>
+  #include <stdio.h>
   int main (int argc, char **argv) {
     printf ("%s\n", _PATH_WTMPX);
     return 0;
@@ -102,7 +104,7 @@ elif cc.has_header_symbol('paths.h', '_PATH_WTMPX')
   config_h.set('PATH_WTMP', '_PATH_WTMPX')
 else
   path_wtmp = '/var/log/utx.log'
-  assert(run_command('test', '-e', path_wtmp).returncode() == 0, 'Do not know which filename to watch for wtmp changes')
+  assert(run_command('test', '-e', path_wtmp, check: false).returncode() == 0, 'Do not know which filename to watch for wtmp changes')
   config_h.set_quoted('PATH_WTMP', path_wtmp)
 endif
 
@@ -186,10 +188,10 @@ endif
 # Core configuration
 admin_group = get_option('admin_group')
 if admin_group == ''
-  if run_command('test', '-e', '/etc/debian_version').returncode() == 0
+  if run_command('test', '-e', '/etc/debian_version', check: false).returncode() == 0
     admin_group = 'sudo'
   # FIXME: this has been left for documentation purposes
-  elif run_command('test', '-e', '/etc/sysconfig/network-scripts').returncode() == 0
+  elif run_command('test', '-e', '/etc/sysconfig/network-scripts', check: false).returncode() == 0
     admin_group = 'wheel'
   else
     admin_group = 'wheel'
@@ -206,6 +208,10 @@ config_h.set('MINIMUM_UID', get_option('minimum_uid'))
 # GDM
 gdm_conf_file = get_option('gdmconffile')
 config_h.set_quoted('PATH_GDM_CUSTOM', gdm_conf_file)
+
+# LightDM
+lightdm_conf_file = get_option('lightdmconffile')
+config_h.set_quoted('PATH_LIGHTDM_CONF', lightdm_conf_file)
 
 if get_option('elogind')
   logind_dep = dependency('libelogind', version: '>= 229.4')
@@ -242,5 +248,6 @@ output = '\n' + meson.project_name() + ' was configured with the following optio
 output += '** DocBook documentation build: ' + enable_docbook.to_string() + '\n'
 output += '** Administrator group: ' + admin_group + '\n'
 output += '** Extra administrator groups: ' + extra_admin_groups + '\n'
-output += '** GDM configuration: ' + gdm_conf_file
+output += '** GDM configuration: ' + gdm_conf_file + '\n'
+output += '** LightDM configuration: ' + lightdm_conf_file
 message(output)

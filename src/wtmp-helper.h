@@ -18,8 +18,7 @@
  * Authors: Ryan Lortie <desrt@desrt.ca>
  */
 
-#ifndef __WTMP_HELPER_H__
-#define __WTMP_HELPER_H__
+#pragma once
 
 #include <glib.h>
 #include <pwd.h>
@@ -27,7 +26,5 @@
 #include <shadow.h>
 #endif
 
-const gchar *           wtmp_helper_get_path_for_monitor                (void);
-void                    wtmp_helper_update_login_frequencies            (GHashTable *users);
-
-#endif /* __WTMP_HELPER_H__ */
+const gchar *           wtmp_helper_get_path_for_monitor (void);
+void                    wtmp_helper_update_login_frequencies (GHashTable *users);

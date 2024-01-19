@@ -69,7 +69,8 @@
 #define ACCOUNTS_NAME           "org.freedesktop.Accounts"
 #define ACCOUNTS_USER_INTERFACE "org.freedesktop.Accounts.User"
 
-enum {
+enum
+{
         PROP_0,
         PROP_UID,
         PROP_USER_NAME,
@@ -95,26 +96,28 @@ enum {
         PROP_IS_LOADED
 };
 
-enum {
+enum
+{
         CHANGED,
         SESSIONS_CHANGED,
         LAST_SIGNAL
 };
 
-struct _ActUser {
-        GObject         parent;
+struct _ActUser
+{
+        GObject          parent;
 
         GDBusConnection *connection;
         AccountsUser    *accounts_proxy;
 
-        GList          *our_sessions;
-        GList          *other_sessions;
+        GList           *our_sessions;
+        GList           *other_sessions;
 
-        guint           is_loaded : 1;
-        guint           nonexistent : 1;
+        guint            is_loaded : 1;
+        guint            nonexistent : 1;
 };
 
-static void act_user_finalize     (GObject      *object);
+static void act_user_finalize (GObject *object);
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
@@ -143,9 +146,9 @@ _act_user_add_session (ActUser    *user,
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ssid != NULL);
 
-        li = g_list_find_custom (user->our_sessions, ssid, (GCompareFunc)session_compare);
+        li = g_list_find_custom (user->our_sessions, ssid, (GCompareFunc) session_compare);
         if (li == NULL)
-                li = g_list_find_custom (user->other_sessions, ssid, (GCompareFunc)session_compare);
+                li = g_list_find_custom (user->other_sessions, ssid, (GCompareFunc) session_compare);
 
         if (li == NULL) {
                 g_debug ("ActUser: adding session %s", ssid);
@@ -169,10 +172,10 @@ _act_user_remove_session (ActUser    *user,
         g_return_if_fail (ssid != NULL);
 
         headp = &(user->our_sessions);
-        li = g_list_find_custom (user->our_sessions, ssid, (GCompareFunc)session_compare);
+        li = g_list_find_custom (user->our_sessions, ssid, (GCompareFunc) session_compare);
         if (li == NULL) {
                 headp = &(user->other_sessions);
-                li = g_list_find_custom (user->other_sessions, ssid, (GCompareFunc)session_compare);
+                li = g_list_find_custom (user->other_sessions, ssid, (GCompareFunc) session_compare);
         }
 
         if (li != NULL) {
@@ -195,7 +198,7 @@ _act_user_remove_session (ActUser    *user,
  * Returns: the number of sessions
  */
 guint
-act_user_get_num_sessions (ActUser    *user)
+act_user_get_num_sessions (ActUser *user)
 {
         return g_list_length (user->our_sessions);
 }
@@ -213,10 +216,10 @@ act_user_get_num_sessions (ActUser    *user)
  * Returns: the number of sessions
  */
 guint
-act_user_get_num_sessions_anywhere (ActUser    *user)
+act_user_get_num_sessions_anywhere (ActUser *user)
 {
-        return (g_list_length (user->our_sessions)
-                + g_list_length (user->other_sessions));
+        return g_list_length (user->our_sessions)
+               + g_list_length (user->other_sessions);
 }
 
 static void
@@ -246,7 +249,6 @@ act_user_get_property (GObject    *object,
                                 property_name = g_param_spec_get_name (pspec);
 
                         g_object_get_property (G_OBJECT (user->accounts_proxy), property_name, value);
-
                 }
                 break;
         }
@@ -423,7 +425,7 @@ act_user_class_init (ActUserClass *class)
                                                                "Locked",
                                                                "Locked",
                                                                FALSE,
-                                                              G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
+                                                               G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
         g_object_class_install_property (gobject_class,
                                          PROP_AUTOMATIC_LOGIN,
@@ -481,7 +483,7 @@ act_user_class_init (ActUserClass *class)
 static void
 act_user_init (ActUser *user)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         user->our_sessions = NULL;
         user->other_sessions = NULL;
@@ -512,8 +514,8 @@ act_user_finalize (GObject *object)
 }
 
 static void
-set_is_loaded (ActUser  *user,
-               gboolean  is_loaded)
+set_is_loaded (ActUser *user,
+               gboolean is_loaded)
 {
         if (user->is_loaded != is_loaded) {
                 user->is_loaded = is_loaded;
@@ -530,7 +532,6 @@ set_is_loaded (ActUser  *user,
  * Returns: a pointer to an array of characters which must not be modified or
  *  freed, or %NULL.
  **/
-
 uid_t
 act_user_get_uid (ActUser *user)
 {
@@ -717,7 +718,6 @@ act_user_get_location (ActUser *user)
  * Returns: (transfer none): a pointer to an array of characters which must not be modified or
  *  freed, or %NULL.
  **/
-
 const char *
 act_user_get_user_name (ActUser *user)
 {
@@ -803,10 +803,10 @@ act_user_collate (ActUser *user1,
 {
         const char *str1;
         const char *str2;
-        int         num1;
-        int         num2;
-        guint       len1;
-        guint       len2;
+        int num1;
+        int num2;
+        guint len1;
+        guint len2;
 
         g_return_val_if_fail (ACT_IS_USER (user1), 0);
         g_return_val_if_fail (ACT_IS_USER (user2), 0);
@@ -940,7 +940,7 @@ act_user_get_automatic_login (ActUser *user)
         if (user->accounts_proxy == NULL)
                 return FALSE;
 
-       return accounts_user_get_automatic_login (user->accounts_proxy);
+        return accounts_user_get_automatic_login (user->accounts_proxy);
 }
 
 /**
@@ -972,7 +972,7 @@ act_user_is_system_account (ActUser *user)
  * Returns: %TRUE if the user is local
  **/
 gboolean
-act_user_is_local_account (ActUser   *user)
+act_user_is_local_account (ActUser *user)
 {
         g_return_val_if_fail (ACT_IS_USER (user), FALSE);
 
@@ -991,7 +991,7 @@ act_user_is_local_account (ActUser   *user)
  * Returns: %TRUE if the user is nonexistent
  **/
 gboolean
-act_user_is_nonexistent (ActUser   *user)
+act_user_is_nonexistent (ActUser *user)
 {
         g_return_val_if_fail (ACT_IS_USER (user), FALSE);
 
@@ -1015,6 +1015,27 @@ act_user_get_icon_file (ActUser *user)
                 return NULL;
 
         return accounts_user_get_icon_file (user->accounts_proxy);
+}
+
+/**
+ * act_user_get_languages:
+ * @user: a #ActUser
+ *
+ * Returns the value of #ActUser:languages.
+ *
+ * Returns: (transfer none) (nullable): the user’s preferred languages, or the
+ *    empty string if they are using the system default language, or %NULL
+ *    if there is no connection to the daemon
+ */
+const char * const *
+act_user_get_languages (ActUser *user)
+{
+        g_return_val_if_fail (ACT_IS_USER (user), NULL);
+
+        if (user->accounts_proxy == NULL)
+                return NULL;
+
+        return (const char **) accounts_user_get_languages (user->accounts_proxy);
 }
 
 /**
@@ -1178,8 +1199,9 @@ void
 _act_user_update_from_object_path (ActUser    *user,
                                    const char *object_path)
 {
-        AccountsUser    *accounts_proxy;
-        g_autoptr(GError) error = NULL;
+        AccountsUser *accounts_proxy;
+
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (object_path != NULL);
@@ -1210,8 +1232,8 @@ _act_user_update_from_object_path (ActUser    *user,
 }
 
 void
-_act_user_update_login_frequency (ActUser    *user,
-                                  int         login_frequency)
+_act_user_update_login_frequency (ActUser *user,
+                                  int      login_frequency)
 {
         if (act_user_get_login_frequency (user) == login_frequency) {
                 return;
@@ -1241,8 +1263,8 @@ copy_sessions_lists (ActUser *user,
 }
 
 void
-_act_user_load_from_user (ActUser    *user,
-                          ActUser    *user_to_copy)
+_act_user_load_from_user (ActUser *user,
+                          ActUser *user_to_copy)
 {
         if (!user_to_copy->is_loaded) {
                 return;
@@ -1303,7 +1325,7 @@ act_user_get_password_expiration_policy (ActUser *user,
                                          gint64  *days_to_warn,
                                          gint64  *days_after_expiration_until_lock)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));
@@ -1337,7 +1359,7 @@ void
 act_user_set_user_expiration_policy (ActUser *user,
                                      gint64   expiration_time)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));
@@ -1372,7 +1394,7 @@ act_user_set_password_expiration_policy (ActUser *user,
                                          gint64   days_to_warn,
                                          gint64   days_after_expiration_until_lock)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));
@@ -1404,7 +1426,7 @@ void
 act_user_set_email (ActUser    *user,
                     const char *email)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (email != NULL);
@@ -1435,7 +1457,7 @@ void
 act_user_set_language (ActUser    *user,
                        const char *language)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (language != NULL);
@@ -1453,6 +1475,41 @@ act_user_set_language (ActUser    *user,
 }
 
 /**
+ * act_user_set_languages:
+ * @user: the user object to alter.
+ * @languages: (array zero-terminated=1) (not nullable): an array of locale (for example, `en_US.utf8`), or
+ *    the empty string to use the system default locale
+ *
+ * Assigns preferred languages for @user, setting #ActUser:languages, and
+ * overriding #ActUser:language with the first item in the list if there is one.
+ *
+ * Note this function is synchronous and ignores errors.
+ **/
+void
+act_user_set_languages (ActUser            *user,
+                        const char * const *languages)
+{
+        g_autoptr (GError) error = NULL;
+
+        g_return_if_fail (ACT_IS_USER (user));
+        g_return_if_fail (languages != NULL);
+        g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));
+
+        if (!accounts_user_call_set_languages_sync (user->accounts_proxy,
+                                                    languages,
+                                                    G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION,
+                                                    -1,
+                                                    NULL,
+                                                    &error)) {
+                g_autofree char *languages_s = NULL;
+
+                languages_s = g_strjoinv (":", (gchar **) languages);
+                g_warning ("SetLanguages for languages %s failed: %s", languages_s, error->message);
+                return;
+        }
+}
+
+/**
  * act_user_set_x_session:
  * @user: the user object to alter.
  * @x_session: an x session (e.g. gnome)
@@ -1465,7 +1522,7 @@ void
 act_user_set_x_session (ActUser    *user,
                         const char *x_session)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (x_session != NULL);
@@ -1495,7 +1552,7 @@ void
 act_user_set_session (ActUser    *user,
                       const char *session)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (session != NULL);
@@ -1525,7 +1582,7 @@ void
 act_user_set_session_type (ActUser    *user,
                            const char *session_type)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (session_type != NULL);
@@ -1555,7 +1612,7 @@ void
 act_user_set_location (ActUser    *user,
                        const char *location)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (location != NULL);
@@ -1585,7 +1642,7 @@ void
 act_user_set_user_name (ActUser    *user,
                         const char *user_name)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (user_name != NULL);
@@ -1615,7 +1672,7 @@ void
 act_user_set_real_name (ActUser    *user,
                         const char *real_name)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (real_name != NULL);
@@ -1645,7 +1702,7 @@ void
 act_user_set_icon_file (ActUser    *user,
                         const char *icon_file)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (icon_file != NULL);
@@ -1672,10 +1729,10 @@ act_user_set_icon_file (ActUser    *user,
  * Note this function is synchronous and ignores errors.
  **/
 void
-act_user_set_account_type (ActUser            *user,
-                           ActUserAccountType  account_type)
+act_user_set_account_type (ActUser           *user,
+                           ActUserAccountType account_type)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));
@@ -1711,8 +1768,8 @@ salt_char (GRand *rand)
 static gchar *
 generate_salt_for_crypt_hash (void)
 {
-        g_autoptr(GString) salt = NULL;
-        g_autoptr(GRand) rand = NULL;
+        g_autoptr (GString) salt = NULL;
+        g_autoptr (GRand) rand = NULL;
         gint i;
 
         rand = g_rand_new ();
@@ -1750,11 +1807,11 @@ make_crypted (const gchar *plain)
  * Note this function is synchronous and ignores errors.
  **/
 void
-act_user_set_password (ActUser             *user,
-                       const gchar         *password,
-                       const gchar         *hint)
+act_user_set_password (ActUser     *user,
+                       const gchar *password,
+                       const gchar *hint)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
         g_autofree gchar *crypted = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
@@ -1788,7 +1845,7 @@ void
 act_user_set_password_hint (ActUser     *user,
                             const gchar *hint)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));
@@ -1817,10 +1874,10 @@ act_user_set_password_hint (ActUser     *user,
  * Note this function is synchronous and ignores errors.
  **/
 void
-act_user_set_password_mode (ActUser             *user,
-                            ActUserPasswordMode  password_mode)
+act_user_set_password_mode (ActUser            *user,
+                            ActUserPasswordMode password_mode)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));
@@ -1843,10 +1900,10 @@ act_user_set_password_mode (ActUser             *user,
  * Note this function is synchronous and ignores errors.
  **/
 void
-act_user_set_locked (ActUser  *user,
-                     gboolean  locked)
+act_user_set_locked (ActUser *user,
+                     gboolean locked)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));
@@ -1874,10 +1931,10 @@ act_user_set_locked (ActUser  *user,
  * Note this function is synchronous and ignores errors.
  **/
 void
-act_user_set_automatic_login (ActUser   *user,
-                              gboolean  enabled)
+act_user_set_automatic_login (ActUser *user,
+                              gboolean enabled)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         g_return_if_fail (ACT_IS_USER (user));
         g_return_if_fail (ACCOUNTS_IS_USER (user->accounts_proxy));

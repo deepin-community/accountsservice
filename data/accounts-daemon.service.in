@@ -53,7 +53,6 @@ RemoveIPC=true
 ReadWritePaths=\
   -@gdm_conf_file@ \
   /etc/ \
-  -/proc/self/loginuid \
   -/var/log/lastlog \
   -/var/log/tallylog \
   -/var/mail/

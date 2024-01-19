@@ -21,35 +21,28 @@
  * Private interfaces to the ActUser object
  */
 
-#ifndef __ACT_USER_PRIVATE_H_
-#define __ACT_USER_PRIVATE_H_
+#pragma once
 
 #include <pwd.h>
 
 #include "act-user.h"
 
-G_BEGIN_DECLS
-
-void           _act_user_update_from_object_path   (ActUser    *user,
-                                                    const char *object_path);
-void           _act_user_update_as_nonexistent     (ActUser    *user);
-void           _act_user_update_login_frequency    (ActUser    *user,
-                                                    int         login_frequency);
-void           _act_user_load_from_user          (ActUser    *user,
-                                                  ActUser    *user_to_copy);
+void           _act_user_update_from_object_path (ActUser    *user,
+                                                  const char *object_path);
+void           _act_user_update_as_nonexistent (ActUser *user);
+void           _act_user_update_login_frequency (ActUser *user,
+                                                 int      login_frequency);
+void           _act_user_load_from_user (ActUser *user,
+                                         ActUser *user_to_copy);
 
 /* 'Our' sessions are the graphical sessions on the same seat as the
-   current process.  The primary session of a user will always be
-   choosen from one of our sessions and act_user_is_logged_in only
-   considers our sessions.
-*/
+ * current process.  The primary session of a user will always be
+ * choosen from one of our sessions and act_user_is_logged_in only
+ * considers our sessions.
+ */
 
-void           _act_user_add_session      (ActUser             *user,
-                                           const char          *session_id,
-                                           gboolean            is_ours);
-void           _act_user_remove_session   (ActUser             *user,
-                                           const char          *session_id);
-
-G_END_DECLS
-
-#endif /* !__ACT_USER_PRIVATE_H_ */
+void           _act_user_add_session (ActUser    *user,
+                                      const char *session_id,
+                                      gboolean    is_ours);
+void           _act_user_remove_session (ActUser    *user,
+                                         const char *session_id);

@@ -11,11 +11,11 @@ Forwarded: not-needed
  src/daemon.c | 77 +++++++++++++++++++++++++++++++++++-------------------------
  1 file changed, 45 insertions(+), 32 deletions(-)
 
-diff --git a/src/daemon.c b/src/daemon.c
-index c8b6320..afad02e 100644
---- a/src/daemon.c
-+++ b/src/daemon.c
-@@ -1082,6 +1082,22 @@ create_data_free (gpointer data)
+Index: accountsservice/src/daemon.c
+===================================================================
+--- accountsservice.orig/src/daemon.c	2023-06-21 12:43:46.914098339 +0200
++++ accountsservice/src/daemon.c	2023-06-21 12:44:49.941238038 +0200
+@@ -1298,6 +1298,22 @@
          g_free (cd);
  }
  
@@ -32,13 +32,13 @@ index c8b6320..afad02e 100644
 +        argv[2] = group_name;
 +        argv[3] = NULL;
 +
-+        return spawn_with_login_uid (context, argv, error);
++        return spawn_sync (argv, error);
 +}
 +
  static void
  daemon_create_user_authorized_cb (Daemon                *daemon,
                                    User                  *dummy,
-@@ -1102,38 +1118,12 @@ daemon_create_user_authorized_cb (Daemon                *daemon,
+@@ -1319,37 +1335,12 @@
  
          sys_log (context, "create user '%s'", cd->user_name);
  
@@ -47,13 +47,13 @@ index c8b6320..afad02e 100644
 -        argv[2] = "-c";
 -        argv[3] = cd->real_name;
 -        if (cd->account_type == ACCOUNT_TYPE_ADMINISTRATOR) {
--                g_auto(GStrv) admin_groups_array = NULL;
--                g_autoptr(GStrvBuilder) admin_groups_builder = g_strv_builder_new ();
+-                g_auto (GStrv) admin_groups_array = NULL;
+-                g_autoptr (GStrvBuilder) admin_groups_builder = g_strv_builder_new ();
 -
 -                g_strv_builder_add (admin_groups_builder, ADMIN_GROUP);
 -
 -                if (EXTRA_ADMIN_GROUPS != NULL && EXTRA_ADMIN_GROUPS[0] != '\0') {
--                        g_auto(GStrv) extra_admin_groups = NULL;
+-                        g_auto (GStrv) extra_admin_groups = NULL;
 -                        extra_admin_groups = g_strsplit (EXTRA_ADMIN_GROUPS, ",", 0);
 -
 -                        for (gsize i = 0; extra_admin_groups[i] != NULL; i++) {
@@ -71,8 +71,7 @@ index c8b6320..afad02e 100644
 -                argv[6] = "--";
 -                argv[7] = cd->user_name;
 -                argv[8] = NULL;
--        }
--        else if (cd->account_type == ACCOUNT_TYPE_STANDARD) {
+-        } else if (cd->account_type == ACCOUNT_TYPE_STANDARD) {
 -                argv[4] = "--";
 +        if (cd->account_type == ACCOUNT_TYPE_ADMINISTRATOR || cd->account_type == ACCOUNT_TYPE_STANDARD) {
 +                argv[0] = "/usr/sbin/adduser";
@@ -82,8 +81,8 @@ index c8b6320..afad02e 100644
 +                argv[4] = cd->real_name;
                  argv[5] = cd->user_name;
                  argv[6] = NULL;
-         }
-@@ -1147,6 +1137,29 @@ daemon_create_user_authorized_cb (Daemon                *daemon,
+         } else {
+@@ -1362,6 +1353,29 @@
                  return;
          }
  

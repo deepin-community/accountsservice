@@ -1,24 +1,24 @@
 /* -*- Mode: C; tab-width: 8; indent-tabs-mode: nil; c-basic-offset: 8 -*-
-  *
-  * Copyright (C) 2004-2005 James M. Cape <jcape@ignore-your.tv>.
-  * Copyright (C) 2007-2008 William Jon McCann <mccann@jhu.edu>
-  * Copyright (C) 2009-2010 Red Hat, Inc.
-  * Copyright © 2013 Canonical Limited
-  *
-  * This program is free software; you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation; either version 2 of the License, or
-  * (at your option) any later version.
-  *
-  * This program is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  * GNU General Public License for more details.
-  *
-  * You should have received a copy of the GNU General Public License
-  * along with this program; if not, write to the Free Software
-  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-  */
+ *
+ * Copyright (C) 2004-2005 James M. Cape <jcape@ignore-your.tv>.
+ * Copyright (C) 2007-2008 William Jon McCann <mccann@jhu.edu>
+ * Copyright (C) 2009-2010 Red Hat, Inc.
+ * Copyright © 2013 Canonical Limited
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
 
 #define _BSD_SOURCE
 
@@ -48,35 +48,37 @@
 #include "accounts-user-generated.h"
 #include "util.h"
 
-struct User {
+struct User
+{
         AccountsUserSkeleton parent;
 
-        GDBusConnection *system_bus_connection;
-        gchar *object_path;
+        GDBusConnection     *system_bus_connection;
+        gchar               *object_path;
 
-        Daemon       *daemon;
+        Daemon              *daemon;
 
-        GKeyFile     *keyfile;
+        GKeyFile            *keyfile;
 
-        gid_t         gid;
-        GDateTime    *user_expiration_time;
-        GDateTime    *last_change_time;
-        gint64        min_days_between_changes;
-        gint64        max_days_between_changes;
-        gint64        days_to_warn;
-        gint64        days_after_expiration_until_lock;
-        GVariant     *login_history;
-        gchar        *icon_file;
-        gchar        *default_icon_file;
-        gchar        *gecos;
-        gboolean      account_expiration_policy_known;
-        gboolean      cached;
-        gboolean      template_loaded;
+        gid_t                gid;
+        GDateTime           *user_expiration_time;
+        GDateTime           *last_change_time;
+        gint64               min_days_between_changes;
+        gint64               max_days_between_changes;
+        gint64               days_to_warn;
+        gint64               days_after_expiration_until_lock;
+        GVariant            *login_history;
+        gchar               *icon_file;
+        gchar               *default_icon_file;
+        gchar               *gecos;
+        gboolean             account_expiration_policy_known;
+        gboolean             cached;
+        gboolean             template_loaded;
+        gboolean             local_account_overridden;
 
-        guint        *extension_ids;
-        guint         n_extension_ids;
+        guint               *extension_ids;
+        guint                n_extension_ids;
 
-        guint         changed_timeout_id;
+        guint                changed_timeout_id;
 };
 
 typedef struct UserClass
@@ -85,7 +87,8 @@ typedef struct UserClass
 } UserClass;
 
 static void user_accounts_user_iface_init (AccountsUserIface *iface);
-static void user_update_from_keyfile (User *user, GKeyFile *keyfile);
+static void user_update_from_keyfile (User     *user,
+                                      GKeyFile *keyfile);
 
 G_DEFINE_TYPE_WITH_CODE (User, user, ACCOUNTS_TYPE_USER_SKELETON, G_IMPLEMENT_INTERFACE (ACCOUNTS_TYPE_USER, user_accounts_user_iface_init));
 
@@ -119,7 +122,7 @@ static void
 user_reset_icon_file (User *user)
 {
         const char *icon_file;
-        gboolean    icon_is_default;
+        gboolean icon_is_default;
         const char *home_dir;
 
         icon_file = accounts_user_get_icon_file (ACCOUNTS_USER (user));
@@ -145,7 +148,7 @@ user_has_cache_file (User *user)
 {
         g_autofree char *filename = NULL;
 
-        filename = g_build_filename (USERDIR, user_get_user_name (user), NULL);
+        filename = g_build_filename (get_userdir (), user_get_user_name (user), NULL);
 
         return g_file_test (filename, G_FILE_TEST_EXISTS);
 }
@@ -155,8 +158,8 @@ is_valid_shell_identifier_character (char     c,
                                      gboolean first)
 {
         return (!first && g_ascii_isdigit (c)) ||
-                c == '_' ||
-                g_ascii_isalpha (c);
+               c == '_' ||
+               g_ascii_isalpha (c);
 }
 
 static char *
@@ -198,8 +201,9 @@ expand_template_variables (User       *user,
                         }
                         start = p;
                         while (*p != '\0' &&
-                               is_valid_shell_identifier_character (*p, p == start))
+                               is_valid_shell_identifier_character (*p, p == start)) {
                                 p++;
+                        }
                         if (p == start || (brackets && *p != '}')) {
                                 g_string_append_c (s, '$');
                                 if (brackets)
@@ -233,6 +237,7 @@ load_template_environment_file (User       *user,
                                 const char *file)
 {
         g_autofree char *contents = NULL;
+
         g_auto (GStrv) lines = NULL;
         g_autoptr (GError) error = NULL;
         gboolean file_loaded;
@@ -255,24 +260,28 @@ load_template_environment_file (User       *user,
                 const char *value;
 
                 p = lines[i];
-                while (g_ascii_isspace (*p))
+                while (g_ascii_isspace (*p)) {
                         p++;
+                }
                 if (*p == '#' || *p == '\0')
                         continue;
                 variable = p;
-                while (is_valid_shell_identifier_character (*p, p == variable))
+                while (is_valid_shell_identifier_character (*p, p == variable)) {
                         p++;
+                }
                 variable_end = p;
-                while (g_ascii_isspace (*p))
+                while (g_ascii_isspace (*p)) {
                         p++;
+                }
                 if (variable_end == variable || *p != '=') {
                         g_debug ("template environment file %s has invalid line '%s'\n", file, lines[i]);
                         continue;
                 }
                 *variable_end = '\0';
                 p++;
-                while (g_ascii_isspace (*p))
+                while (g_ascii_isspace (*p)) {
                         p++;
+                }
                 value = p;
 
                 if (g_hash_table_lookup (variables, variable) == NULL) {
@@ -280,7 +289,6 @@ load_template_environment_file (User       *user,
                                              g_strdup (variable),
                                              g_strdup (value));
                 }
-
         }
 }
 
@@ -306,6 +314,7 @@ static void
 user_update_from_template (User *user)
 {
         g_autofree char *filename = NULL;
+
         g_autoptr (GKeyFile) key_file = NULL;
         g_autoptr (GError) error = NULL;
         g_autoptr (GHashTable) template_variables = NULL;
@@ -316,18 +325,20 @@ user_update_from_template (User *user)
                 g_get_system_data_dirs (),
                 NULL
         };
+
         g_autoptr (GPtrArray) dirs = NULL;
         AccountType account_type;
         const char *account_type_string;
         size_t i, j;
         g_autofree char *contents = NULL;
         g_autofree char *expanded = NULL;
+
         g_auto (GStrv) lines = NULL;
 
         if (user->template_loaded)
                 return;
 
-        filename = g_build_filename (USERDIR,
+        filename = g_build_filename (get_userdir (),
                                      accounts_user_get_user_name (ACCOUNTS_USER (user)),
                                      NULL);
 
@@ -403,7 +414,8 @@ user_update_from_pwent (User          *user,
         g_autofree gchar *real_name = NULL;
         gboolean is_system_account;
         const gchar *passwd;
-        g_autoptr(GDateTime) start_time = NULL;
+
+        g_autoptr (GDateTime) start_time = NULL;
         gboolean locked;
         PasswordMode mode;
         AccountType account_type;
@@ -419,8 +431,7 @@ user_update_from_pwent (User          *user,
                         valid_utf8_name = pwent->pw_gecos;
                         first_comma = g_utf8_strchr (valid_utf8_name, -1, ',');
                         user->gecos = g_strdup (pwent->pw_gecos);
-                }
-                else {
+                } else {
                         g_warning ("User %s has invalid UTF-8 in GECOS field. "
                                    "It would be a good thing to check /etc/passwd.",
                                    pwent->pw_name ? pwent->pw_name : "");
@@ -428,20 +439,17 @@ user_update_from_pwent (User          *user,
 
                 if (first_comma) {
                         real_name = g_strndup (valid_utf8_name,
-                                                  (first_comma - valid_utf8_name));
-                }
-                else if (valid_utf8_name) {
+                                               (first_comma - valid_utf8_name));
+                } else if (valid_utf8_name) {
                         real_name = g_strdup (valid_utf8_name);
-                }
-                else {
+                } else {
                         real_name = NULL;
                 }
 
                 if (real_name && real_name[0] == '\0') {
                         g_clear_pointer (&real_name, g_free);
                 }
-        }
-        else {
+        } else {
                 real_name = NULL;
         }
 
@@ -465,8 +473,7 @@ user_update_from_pwent (User          *user,
 
         if (passwd && passwd[0] == '!') {
                 locked = TRUE;
-        }
-        else {
+        } else {
                 locked = FALSE;
         }
 
@@ -474,8 +481,7 @@ user_update_from_pwent (User          *user,
 
         if (passwd == NULL || passwd[0] != 0) {
                 mode = PASSWORD_MODE_REGULAR;
-        }
-        else {
+        } else {
                 mode = PASSWORD_MODE_NONE;
         }
 
@@ -487,15 +493,14 @@ user_update_from_pwent (User          *user,
                 start_time = g_date_time_new_from_unix_utc (0);
                 if (spent->sp_expire < 0) {
                         user->user_expiration_time = NULL;
-                }
-                else {
+                } else {
                         user->user_expiration_time = g_date_time_add_days (start_time, spent->sp_expire);
                 }
                 user->last_change_time = g_date_time_add_days (start_time, spent->sp_lstchg);
 
                 user->min_days_between_changes = spent->sp_min;
                 user->max_days_between_changes = spent->sp_max;
-                user->days_to_warn  = spent->sp_warn;
+                user->days_to_warn = spent->sp_warn;
                 user->days_after_expiration_until_lock = spent->sp_inact;
                 user->account_expiration_policy_known = TRUE;
         }
@@ -503,8 +508,7 @@ user_update_from_pwent (User          *user,
         accounts_user_set_password_mode (ACCOUNTS_USER (user), mode);
         is_system_account = !user_classify_is_human (accounts_user_get_uid (ACCOUNTS_USER (user)),
                                                      accounts_user_get_user_name (ACCOUNTS_USER (user)),
-                                                     accounts_user_get_shell (ACCOUNTS_USER (user)),
-                                                     passwd);
+                                                     accounts_user_get_shell (ACCOUNTS_USER (user)));
         accounts_user_set_system_account (ACCOUNTS_USER (user), is_system_account);
 
         if (!user_has_cache_file (user))
@@ -516,10 +520,23 @@ static void
 user_update_from_keyfile (User     *user,
                           GKeyFile *keyfile)
 {
-        gchar *s;
+        gchar *s, **sl;
 
         s = g_key_file_get_string (keyfile, "User", "Language", NULL);
-        if (s != NULL) {
+        sl = g_key_file_get_string_list (keyfile, "User", "Languages", NULL, NULL);
+        if (sl != NULL) {
+                accounts_user_set_languages (ACCOUNTS_USER (user), (const gchar *const *) sl);
+                accounts_user_set_language (ACCOUNTS_USER (user), sl[0]);
+                g_clear_pointer (&sl, g_strfreev);
+        } else if (s != NULL) {
+                const char *languages[] = { s, NULL };
+                if (!verify_locale (s)) {
+                        g_warning ("Language '%s' set for user %s is invalid",
+                                   s, accounts_user_get_user_name (ACCOUNTS_USER (user)));
+                } else {
+                        /* Don't migrate broken locales */
+                        accounts_user_set_languages (ACCOUNTS_USER (user), languages);
+                }
                 accounts_user_set_language (ACCOUNTS_USER (user), s);
                 g_clear_pointer (&s, g_free);
         }
@@ -569,11 +586,20 @@ user_update_from_keyfile (User     *user,
                 g_clear_pointer (&s, g_free);
         }
 
-        if (g_key_file_has_key (keyfile, "User", "SystemAccount", NULL)) {
-            gboolean system_account;
+        if (g_key_file_has_key (keyfile, "User", "LocalAccount", NULL)) {
+                gboolean local_account;
 
-            system_account = g_key_file_get_boolean (keyfile, "User", "SystemAccount", NULL);
-            accounts_user_set_system_account (ACCOUNTS_USER (user), system_account);
+                user->local_account_overridden = TRUE;
+
+                local_account = g_key_file_get_boolean (keyfile, "User", "LocalAccount", NULL);
+                accounts_user_set_local_account (ACCOUNTS_USER (user), local_account);
+        }
+
+        if (g_key_file_has_key (keyfile, "User", "SystemAccount", NULL)) {
+                gboolean system_account;
+
+                system_account = g_key_file_get_boolean (keyfile, "User", "SystemAccount", NULL);
+                accounts_user_set_system_account (ACCOUNTS_USER (user), system_account);
         }
 
         g_clear_pointer (&user->keyfile, g_key_file_unref);
@@ -584,9 +610,10 @@ void
 user_update_from_cache (User *user)
 {
         g_autofree gchar *filename = NULL;
-        g_autoptr(GKeyFile) key_file = NULL;
 
-        filename = g_build_filename (USERDIR, accounts_user_get_user_name (ACCOUNTS_USER (user)), NULL);
+        g_autoptr (GKeyFile) key_file = NULL;
+
+        filename = g_build_filename (get_userdir (), accounts_user_get_user_name (ACCOUNTS_USER (user)), NULL);
 
         key_file = g_key_file_new ();
 
@@ -601,15 +628,15 @@ user_update_from_cache (User *user)
 }
 
 void
-user_update_local_account_property (User          *user,
-                                    gboolean       local)
+user_update_local_account_property (User    *user,
+                                    gboolean local)
 {
         accounts_user_set_local_account (ACCOUNTS_USER (user), local);
 }
 
 void
-user_update_system_account_property (User          *user,
-                                     gboolean       system)
+user_update_system_account_property (User    *user,
+                                     gboolean system)
 {
         accounts_user_set_system_account (ACCOUNTS_USER (user), system);
 }
@@ -623,8 +650,16 @@ user_save_to_keyfile (User     *user,
         if (accounts_user_get_email (ACCOUNTS_USER (user)))
                 g_key_file_set_string (keyfile, "User", "Email", accounts_user_get_email (ACCOUNTS_USER (user)));
 
-        if (accounts_user_get_language (ACCOUNTS_USER (user)))
-                g_key_file_set_string (keyfile, "User", "Language", accounts_user_get_language (ACCOUNTS_USER (user)));
+        if (accounts_user_get_languages (ACCOUNTS_USER (user))) {
+                const gchar * const *languages;
+                languages = accounts_user_get_languages (ACCOUNTS_USER (user));
+                g_key_file_set_string_list (keyfile, "User", "Languages", languages, g_strv_length ((char **) languages));
+        } else if (accounts_user_get_language (ACCOUNTS_USER (user))) {
+                const gchar *languages[] = { NULL, NULL };
+
+                languages[0] = accounts_user_get_language (ACCOUNTS_USER (user));
+                g_key_file_set_string_list (keyfile, "User", "Languages", languages, g_strv_length ((char **) languages));
+        }
 
         if (accounts_user_get_session (ACCOUNTS_USER (user)))
                 g_key_file_set_string (keyfile, "User", "Session", accounts_user_get_session (ACCOUNTS_USER (user)));
@@ -644,6 +679,9 @@ user_save_to_keyfile (User     *user,
         if (accounts_user_get_icon_file (ACCOUNTS_USER (user)))
                 g_key_file_set_string (keyfile, "User", "Icon", accounts_user_get_icon_file (ACCOUNTS_USER (user)));
 
+        if (user->local_account_overridden)
+                g_key_file_set_boolean (keyfile, "User", "LocalAccount", accounts_user_get_local_account (ACCOUNTS_USER (user)));
+
         g_key_file_set_boolean (keyfile, "User", "SystemAccount", accounts_user_get_system_account (ACCOUNTS_USER (user)));
 
         user_set_cached (user, TRUE);
@@ -654,7 +692,8 @@ save_extra_data (User *user)
 {
         g_autofree gchar *data = NULL;
         g_autofree gchar *filename = NULL;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
 
         user_save_to_keyfile (user, user->keyfile);
 
@@ -665,7 +704,7 @@ save_extra_data (User *user)
                 return;
         }
 
-        filename = g_build_filename (USERDIR,
+        filename = g_build_filename (get_userdir (),
                                      accounts_user_get_user_name (ACCOUNTS_USER (user)),
                                      NULL);
         g_file_set_contents (filename, data, -1, &error);
@@ -680,9 +719,9 @@ move_extra_data (const gchar *old_name,
         g_autofree gchar *old_filename = NULL;
         g_autofree gchar *new_filename = NULL;
 
-        old_filename = g_build_filename (USERDIR,
+        old_filename = g_build_filename (get_userdir (),
                                          old_name, NULL);
-        new_filename = g_build_filename (USERDIR,
+        new_filename = g_build_filename (get_userdir (),
                                          new_name, NULL);
 
         g_rename (old_filename, new_filename);
@@ -713,8 +752,7 @@ user_extension_get_value (User                    *user,
                 if (g_str_equal (annotation->key, "org.freedesktop.Accounts.DefaultValue.String")) {
                         if (g_str_equal (property->signature, "s"))
                                 return g_variant_ref_sink (g_variant_new_string (annotation->value));
-                }
-                else if (g_str_equal (annotation->key, "org.freedesktop.Accounts.DefaultValue")) {
+                } else if (g_str_equal (annotation->key, "org.freedesktop.Accounts.DefaultValue")) {
                         value = g_variant_parse (type, annotation->value, NULL, NULL, NULL);
                         if (value != NULL)
                                 return value;
@@ -732,14 +770,14 @@ user_extension_get_property (User                  *user,
                              GDBusMethodInvocation *invocation)
 {
         const GDBusPropertyInfo *property = g_dbus_method_invocation_get_property_info (invocation);
-        g_autoptr(GVariant) value = NULL;
+
+        g_autoptr (GVariant) value = NULL;
 
         value = user_extension_get_value (user, interface, property);
 
         if (value) {
                 g_dbus_method_invocation_return_value (invocation, g_variant_new ("(v)", value));
-        }
-        else {
+        } else {
                 g_dbus_method_invocation_return_error (invocation, G_DBUS_ERROR, G_DBUS_ERROR_INVALID_ARGS,
                                                        "Key '%s' is not set and has no default value",
                                                        property->name);
@@ -758,7 +796,7 @@ user_extension_get_all_properties (User                  *user,
         g_variant_builder_init (&builder, G_VARIANT_TYPE_VARDICT);
         for (i = 0; interface->properties && interface->properties[i]; i++) {
                 GDBusPropertyInfo *property = interface->properties[i];
-                g_autoptr(GVariant) value = NULL;
+                g_autoptr (GVariant) value = NULL;
 
                 value = user_extension_get_value (user, interface, property);
 
@@ -776,7 +814,8 @@ user_extension_set_property (User                  *user,
                              GDBusMethodInvocation *invocation)
 {
         const GDBusPropertyInfo *property = g_dbus_method_invocation_get_property_info (invocation);
-        g_autoptr(GVariant) value = NULL;
+
+        g_autoptr (GVariant) value = NULL;
         g_autofree gchar *printed = NULL;
         g_autofree gchar *prev = NULL;
 
@@ -865,19 +904,16 @@ user_extension_method_call (GDBusConnection       *connection,
                 if (g_str_equal (method_name, "Set")) {
                         annotation_name = "org.freedesktop.Accounts.Authentication.ChangeOwn";
                         action_id = "org.freedesktop.accounts.change-own-user-data";
-                }
-                else {
+                } else {
                         annotation_name = "org.freedesktop.Accounts.Authentication.ReadOwn";
                         action_id = ""; /* reading allowed by default */
                 }
-        }
-        else {
+        } else {
                 /* Operation on someone else's User object */
                 if (g_str_equal (method_name, "Set")) {
                         annotation_name = "org.freedesktop.Accounts.Authentication.ChangeAny";
                         action_id = "org.freedesktop.accounts.user-administration";
-                }
-                else {
+                } else {
                         annotation_name = "org.freedesktop.Accounts.Authentication.ReadAny";
                         action_id = ""; /* reading allowed by default */
                 }
@@ -896,8 +932,7 @@ user_extension_method_call (GDBusConnection       *connection,
         if (action_id[0] == '\0') {
                 /* Should always allow this call, so just do it now */
                 user_extension_authentication_done (user->daemon, user, invocation, iface_info);
-        }
-        else {
+        } else {
                 daemon_local_check_auth (user->daemon, user, action_id,
                                          user_extension_authentication_done,
                                          invocation, iface_info, NULL);
@@ -929,10 +964,11 @@ user_register_extensions (User *user)
          * they won't happen and (b) even if they do, we still want to
          * publish the main user interface.
          */
-        while (g_hash_table_iter_next (&iter, NULL, &iface))
+        while (g_hash_table_iter_next (&iter, NULL, &iface)) {
                 user->extension_ids[i++] = g_dbus_connection_register_object (user->system_bus_connection,
                                                                               g_dbus_interface_skeleton_get_object_path (G_DBUS_INTERFACE_SKELETON (user)), iface,
                                                                               &vtable, user, NULL, NULL);
+        }
 }
 
 static gchar *
@@ -967,7 +1003,7 @@ on_user_property_notify (User *user)
 void
 user_register (User *user)
 {
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
         g_autofree gchar *object_path = NULL;
 
         user->system_bus_connection = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
@@ -996,7 +1032,7 @@ user_register (User *user)
 void
 user_save (User *user)
 {
-    save_extra_data (user);
+        save_extra_data (user);
 }
 
 void
@@ -1054,9 +1090,15 @@ user_get_system_account (User *user)
 }
 
 gboolean
+user_get_local_account_overridden (User *user)
+{
+        return user->local_account_overridden;
+}
+
+gboolean
 user_get_local_account (User *user)
 {
-        return accounts_user_get_local_account (ACCOUNTS_USER (user));;
+        return accounts_user_get_local_account (ACCOUNTS_USER (user));
 }
 
 const gchar *
@@ -1072,9 +1114,9 @@ user_get_uid (User *user)
 }
 
 const gchar *
-user_get_shell(User *user)
+user_get_shell (User *user)
 {
-	return accounts_user_get_shell (ACCOUNTS_USER (user));
+        return accounts_user_get_shell (ACCOUNTS_USER (user));
 }
 
 gboolean
@@ -1084,18 +1126,23 @@ user_get_cached (User *user)
 }
 
 void
-user_set_cached (User     *user,
-                 gboolean  cached)
+user_set_cached (User    *user,
+                 gboolean cached)
 {
         user->cached = cached;
 }
 
 void
-user_set_saved (User     *user,
-                gboolean  saved)
+user_set_saved (User    *user,
+                gboolean saved)
 {
         accounts_user_set_saved (ACCOUNTS_USER (user), saved);
 }
+
+static void throw_error (GDBusMethodInvocation *context,
+                         gint                   error_code,
+                         const gchar           *format,
+                         ...) G_GNUC_PRINTF (3, 4);
 
 static void
 throw_error (GDBusMethodInvocation *context,
@@ -1122,13 +1169,14 @@ user_change_real_name_authorized_cb (Daemon                *daemon,
 {
         gchar *name = data;
         g_autofree gchar *new_gecos = NULL;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         const gchar *first_comma = NULL;
         const gchar *argv[6];
 
         if (g_strcmp0 (accounts_user_get_real_name (ACCOUNTS_USER (user)), name) != 0) {
                 sys_log (context,
-                         "change real name of user '%s' (%d) to '%s'",
+                         "change real name of user '%s' (%" G_GUINT64_FORMAT ") to '%s'",
                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
                          accounts_user_get_uid (ACCOUNTS_USER (user)),
                          name);
@@ -1152,7 +1200,7 @@ user_change_real_name_authorized_cb (Daemon                *daemon,
                 argv[4] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                 argv[5] = NULL;
 
-                if (!spawn_with_login_uid (context, argv, &error)) {
+                if (!spawn_sync (argv, &error)) {
                         throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                         return;
                 }
@@ -1168,7 +1216,7 @@ user_set_real_name (AccountsUser          *auser,
                     GDBusMethodInvocation *context,
                     const gchar           *real_name)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1193,7 +1241,7 @@ user_set_real_name (AccountsUser          *auser,
                                  user_change_real_name_authorized_cb,
                                  context,
                                  g_strdup (real_name),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
@@ -1207,13 +1255,14 @@ user_change_user_name_authorized_cb (Daemon                *daemon,
 {
         gchar *name = data;
         gchar *old_name;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         const gchar *argv[6];
 
         if (g_strcmp0 (accounts_user_get_user_name (ACCOUNTS_USER (user)), name) != 0) {
                 old_name = g_strdup (accounts_user_get_user_name (ACCOUNTS_USER (user)));
                 sys_log (context,
-                         "change name of user '%s' (%d) to '%s'",
+                         "change name of user '%s' (%" G_GUINT64_FORMAT ") to '%s'",
                          old_name,
                          accounts_user_get_uid (ACCOUNTS_USER (user)),
                          name);
@@ -1225,7 +1274,7 @@ user_change_user_name_authorized_cb (Daemon                *daemon,
                 argv[4] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                 argv[5] = NULL;
 
-                if (!spawn_with_login_uid (context, argv, &error)) {
+                if (!spawn_sync (argv, &error)) {
                         throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                         return;
                 }
@@ -1244,14 +1293,15 @@ user_set_user_name (AccountsUser          *auser,
                     GDBusMethodInvocation *context,
                     const gchar           *user_name)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
+
         daemon_local_check_auth (user->daemon,
                                  user,
                                  "org.freedesktop.accounts.user-administration",
                                  user_change_user_name_authorized_cb,
                                  context,
                                  g_strdup (user_name),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
@@ -1281,7 +1331,7 @@ user_set_email (AccountsUser          *auser,
                 GDBusMethodInvocation *context,
                 const gchar           *email)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1301,7 +1351,68 @@ user_set_email (AccountsUser          *auser,
                                  user_change_email_authorized_cb,
                                  context,
                                  g_strdup (email),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
+
+        return TRUE;
+}
+
+static void
+user_change_languages_authorized_cb (Daemon                *daemon,
+                                     User                  *user,
+                                     GDBusMethodInvocation *context,
+                                     gpointer               data)
+
+{
+        const gchar * const *languages = data;
+        guint i;
+
+        for (i = 0; languages[i] != NULL; i++) {
+                if (!verify_locale (languages[i])) {
+                        g_dbus_method_invocation_return_error (context,
+                                                               G_DBUS_ERROR,
+                                                               G_DBUS_ERROR_INVALID_ARGS,
+                                                               "Locale '%s' is not a valid XPG-formatted locale",
+                                                               languages[i]);
+                        return;
+                }
+        }
+
+        if (!g_strv_equal (accounts_user_get_languages (ACCOUNTS_USER (user)), languages)) {
+                accounts_user_set_language (ACCOUNTS_USER (user), languages[0]);
+                accounts_user_set_languages (ACCOUNTS_USER (user), languages);
+
+                save_extra_data (user);
+        }
+
+        accounts_user_complete_set_languages (ACCOUNTS_USER (user), context);
+}
+
+static gboolean
+user_set_languages (AccountsUser          *auser,
+                    GDBusMethodInvocation *context,
+                    const gchar * const   *languages)
+{
+        User *user = (User *) auser;
+        int uid;
+        const gchar *action_id;
+
+        if (!get_caller_uid (context, &uid)) {
+                throw_error (context, ERROR_FAILED, "identifying caller failed");
+                return TRUE;
+        }
+
+        if (accounts_user_get_uid (ACCOUNTS_USER (user)) == (uid_t) uid)
+                action_id = "org.freedesktop.accounts.change-own-user-data";
+        else
+                action_id = "org.freedesktop.accounts.user-administration";
+
+        daemon_local_check_auth (user->daemon,
+                                 user,
+                                 action_id,
+                                 user_change_languages_authorized_cb,
+                                 context,
+                                 g_strdupv ((gchar **) languages),
+                                 (GDestroyNotify) g_strfreev);
 
         return TRUE;
 }
@@ -1315,8 +1426,20 @@ user_change_language_authorized_cb (Daemon                *daemon,
 {
         gchar *language = data;
 
+        if (!verify_locale (language)) {
+                g_dbus_method_invocation_return_error (context,
+                                                       G_DBUS_ERROR,
+                                                       G_DBUS_ERROR_INVALID_ARGS,
+                                                       "Locale '%s' is not a valid XPG-formatted locale",
+                                                       language);
+                return;
+        }
+
         if (g_strcmp0 (accounts_user_get_language (ACCOUNTS_USER (user)), language) != 0) {
+                const gchar *languages[] = { language, NULL };
+
                 accounts_user_set_language (ACCOUNTS_USER (user), language);
+                accounts_user_set_languages (ACCOUNTS_USER (user), languages);
 
                 save_extra_data (user);
         }
@@ -1331,7 +1454,7 @@ user_set_language (AccountsUser          *auser,
                    GDBusMethodInvocation *context,
                    const gchar           *language)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1351,7 +1474,7 @@ user_set_language (AccountsUser          *auser,
                                  user_change_language_authorized_cb,
                                  context,
                                  g_strdup (language),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
@@ -1379,7 +1502,7 @@ user_set_session (AccountsUser          *auser,
                   GDBusMethodInvocation *context,
                   const gchar           *session)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1427,7 +1550,7 @@ user_set_session_type (AccountsUser          *auser,
                        GDBusMethodInvocation *context,
                        const gchar           *session_type)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1475,7 +1598,7 @@ user_set_x_session (AccountsUser          *auser,
                     GDBusMethodInvocation *context,
                     const gchar           *x_session)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1507,7 +1630,7 @@ user_get_password_expiration_policy_authorized_cb (Daemon                *daemon
                                                    gpointer               data)
 
 {
-        gint64  user_expiration_time;
+        gint64 user_expiration_time;
         guint64 last_change_time;
 
         if (!user->account_expiration_policy_known) {
@@ -1516,8 +1639,7 @@ user_get_password_expiration_policy_authorized_cb (Daemon                *daemon
         }
         if (user->user_expiration_time == NULL) {
                 user_expiration_time = -1;
-        }
-        else {
+        } else {
                 user_expiration_time = g_date_time_to_unix (user->user_expiration_time);
         }
         last_change_time = g_date_time_to_unix (user->last_change_time);
@@ -1535,7 +1657,7 @@ static gboolean
 user_get_password_expiration_policy (AccountsUser          *auser,
                                      GDBusMethodInvocation *context)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1562,11 +1684,10 @@ user_get_password_expiration_policy (AccountsUser          *auser,
 
 typedef struct PasswordExpirationPolicy
 {
-        char        *min_days_between_changes;
-        char        *max_days_between_changes;
-        char        *days_to_warn;
-        char        *days_after_expiration_until_lock;
-
+        char *min_days_between_changes;
+        char *max_days_between_changes;
+        char *days_to_warn;
+        char *days_after_expiration_until_lock;
 } PasswordExpirationPolicy;
 
 static void
@@ -1587,11 +1708,12 @@ user_set_password_expiration_policy_authorized_cb (Daemon                *daemon
 
 {
         PasswordExpirationPolicy *pwd_expiration = data;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         const gchar *argv[11];
 
         sys_log (context,
-                 "set password expiration policy of user '%s' (%d)",
+                 "set password expiration policy of user '%s' (%" G_GUINT64_FORMAT ")",
                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
                  accounts_user_get_uid (ACCOUNTS_USER (user)));
 
@@ -1608,7 +1730,7 @@ user_set_password_expiration_policy_authorized_cb (Daemon                *daemon
         argv[9] = accounts_user_get_user_name (ACCOUNTS_USER (user));
         argv[10] = NULL;
 
-        if (!spawn_with_login_uid (context, argv, &error)) {
+        if (!spawn_sync (argv, &error)) {
                 throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                 return;
         }
@@ -1626,7 +1748,7 @@ user_set_password_expiration_policy (AccountsUser          *auser,
                                      gint64                 days_to_warn,
                                      gint64                 days_after_expiration_until_lock)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
         PasswordExpirationPolicy *pwd_expiration = NULL;
@@ -1653,7 +1775,7 @@ user_set_password_expiration_policy (AccountsUser          *auser,
                                  user_set_password_expiration_policy_authorized_cb,
                                  context,
                                  pwd_expiration,
-                                 (GDestroyNotify)free_password_expiration);
+                                 (GDestroyNotify) free_password_expiration);
 
         return TRUE;
 }
@@ -1666,22 +1788,22 @@ user_set_user_expiration_policy_authorized_cb (Daemon                *daemon,
 
 {
         g_autofree gchar *expiration_time = NULL;
+
         g_autoptr (GError) error = NULL;
         g_autoptr (GDateTime) time = NULL;
         const gchar *argv[5];
 
         sys_log (context,
-                 "set user expiration policy of user '%s' (%d)",
+                 "set user expiration policy of user '%s' (%" G_GUINT64_FORMAT ")",
                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
                  accounts_user_get_uid (ACCOUNTS_USER (user)));
 
         g_object_freeze_notify (G_OBJECT (user));
 
-        if ((gint64)data != -1) {
-                time = g_date_time_new_from_unix_local ((gint64)data);
+        if ((gint64) data != -1) {
+                time = g_date_time_new_from_unix_local ((gint64) data);
                 expiration_time = g_date_time_format (time, "%F");
-        }
-        else {
+        } else {
                 expiration_time = g_strdup ("-1");
         }
         argv[0] = "/usr/bin/chage";
@@ -1690,7 +1812,7 @@ user_set_user_expiration_policy_authorized_cb (Daemon                *daemon,
         argv[3] = accounts_user_get_user_name (ACCOUNTS_USER (user));
         argv[4] = NULL;
 
-        if (!spawn_with_login_uid (context, argv, &error)) {
+        if (!spawn_sync (argv, &error)) {
                 throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                 return;
         }
@@ -1705,7 +1827,7 @@ user_set_user_expiration_policy (AccountsUser          *auser,
                                  GDBusMethodInvocation *context,
                                  gint64                 user_expiration_time)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1724,7 +1846,7 @@ user_set_user_expiration_policy (AccountsUser          *auser,
                                  action_id,
                                  user_set_user_expiration_policy_authorized_cb,
                                  context,
-                                 (gpointer)user_expiration_time,
+                                 (gpointer) user_expiration_time,
                                  NULL);
 
         return TRUE;
@@ -1753,7 +1875,7 @@ user_set_location (AccountsUser          *auser,
                    GDBusMethodInvocation *context,
                    const gchar           *location)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -1773,7 +1895,7 @@ user_set_location (AccountsUser          *auser,
                                  user_change_location_authorized_cb,
                                  context,
                                  g_strdup (location),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
@@ -1786,12 +1908,13 @@ user_change_home_dir_authorized_cb (Daemon                *daemon,
 
 {
         gchar *home_dir = data;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         const gchar *argv[7];
 
         if (g_strcmp0 (accounts_user_get_home_directory (ACCOUNTS_USER (user)), home_dir) != 0) {
                 sys_log (context,
-                         "change home directory of user '%s' (%d) to '%s'",
+                         "change home directory of user '%s' (%" G_GUINT64_FORMAT ") to '%s'",
                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
                          accounts_user_get_uid (ACCOUNTS_USER (user)),
                          home_dir);
@@ -1804,7 +1927,7 @@ user_change_home_dir_authorized_cb (Daemon                *daemon,
                 argv[5] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                 argv[6] = NULL;
 
-                if (!spawn_with_login_uid (context, argv, &error)) {
+                if (!spawn_sync (argv, &error)) {
                         throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                         return;
                 }
@@ -1822,14 +1945,15 @@ user_set_home_directory (AccountsUser          *auser,
                          GDBusMethodInvocation *context,
                          const gchar           *home_dir)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
+
         daemon_local_check_auth (user->daemon,
                                  user,
                                  "org.freedesktop.accounts.user-administration",
                                  user_change_home_dir_authorized_cb,
                                  context,
                                  g_strdup (home_dir),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
@@ -1842,12 +1966,13 @@ user_change_shell_authorized_cb (Daemon                *daemon,
 
 {
         gchar *shell = data;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         const gchar *argv[6];
 
         if (g_strcmp0 (accounts_user_get_shell (ACCOUNTS_USER (user)), shell) != 0) {
                 sys_log (context,
-                         "change shell of user '%s' (%d) to '%s'",
+                         "change shell of user '%s' (%" G_GUINT64_FORMAT ") to '%s'",
                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
                          accounts_user_get_uid (ACCOUNTS_USER (user)),
                          shell);
@@ -1859,7 +1984,7 @@ user_change_shell_authorized_cb (Daemon                *daemon,
                 argv[4] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                 argv[5] = NULL;
 
-                if (!spawn_with_login_uid (context, argv, &error)) {
+                if (!spawn_sync (argv, &error)) {
                         throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                         return;
                 }
@@ -1875,14 +2000,15 @@ user_set_shell (AccountsUser          *auser,
                 GDBusMethodInvocation *context,
                 const gchar           *shell)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
+
         daemon_local_check_auth (user->daemon,
                                  user,
                                  "org.freedesktop.accounts.user-administration",
                                  user_change_shell_authorized_cb,
                                  context,
                                  g_strdup (shell),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
@@ -1908,8 +2034,9 @@ user_change_icon_file_authorized_cb (Daemon                *daemon,
 
 {
         g_autofree gchar *filename = NULL;
-        g_autoptr(GFile) file = NULL;
-        g_autoptr(GFileInfo) info = NULL;
+
+        g_autoptr (GFile) file = NULL;
+        g_autoptr (GFileInfo) info = NULL;
         guint32 mode;
         GFileType type;
         guint64 size;
@@ -1919,12 +2046,12 @@ user_change_icon_file_authorized_cb (Daemon                *daemon,
         if (filename == NULL ||
             *filename == '\0') {
                 g_autofree gchar *dest_path = NULL;
-                g_autoptr(GFile) dest = NULL;
-                g_autoptr(GError) error = NULL;
+                g_autoptr (GFile) dest = NULL;
+                g_autoptr (GError) error = NULL;
 
                 g_clear_pointer (&filename, g_free);
 
-                dest_path = g_build_filename (ICONDIR, accounts_user_get_user_name (ACCOUNTS_USER (user)), NULL);
+                dest_path = g_build_filename (get_icondir (), accounts_user_get_user_name (ACCOUNTS_USER (user)), NULL);
                 dest = g_file_new_for_path (dest_path);
 
                 if (!g_file_delete (dest, NULL, &error) &&
@@ -1945,8 +2072,8 @@ user_change_icon_file_authorized_cb (Daemon                *daemon,
         filename = g_file_get_path (file);
 
         info = g_file_query_info (file, G_FILE_ATTRIBUTE_UNIX_MODE ","
-                                        G_FILE_ATTRIBUTE_STANDARD_TYPE ","
-                                        G_FILE_ATTRIBUTE_STANDARD_SIZE,
+                                  G_FILE_ATTRIBUTE_STANDARD_TYPE ","
+                                  G_FILE_ATTRIBUTE_STANDARD_SIZE,
                                   0, NULL, NULL);
         mode = g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_MODE);
         type = g_file_info_get_file_type (info);
@@ -1967,14 +2094,14 @@ user_change_icon_file_authorized_cb (Daemon                *daemon,
 
         if ((mode & S_IROTH) == 0 ||
             (!g_str_has_prefix (filename, DATADIR) &&
-             !g_str_has_prefix (filename, ICONDIR))) {
+             !g_str_has_prefix (filename, get_icondir ()))) {
                 g_autofree gchar *dest_path = NULL;
-                g_autoptr(GFile) dest = NULL;
+                g_autoptr (GFile) dest = NULL;
                 const gchar *argv[3];
                 gint std_out;
-                g_autoptr(GError) error = NULL;
-                g_autoptr(GInputStream) input = NULL;
-                g_autoptr(GOutputStream) output = NULL;
+                g_autoptr (GError) error = NULL;
+                g_autoptr (GInputStream) input = NULL;
+                g_autoptr (GOutputStream) output = NULL;
                 gint uid;
                 gssize bytes;
                 struct passwd *pw;
@@ -1984,7 +2111,7 @@ user_change_icon_file_authorized_cb (Daemon                *daemon,
                         return;
                 }
 
-                dest_path = g_build_filename (ICONDIR, accounts_user_get_user_name (ACCOUNTS_USER (user)), NULL);
+                dest_path = g_build_filename (get_icondir (), accounts_user_get_user_name (ACCOUNTS_USER (user)), NULL);
                 dest = g_file_new_for_path (dest_path);
 
                 output = G_OUTPUT_STREAM (g_file_replace (dest, NULL, FALSE, 0, NULL, &error));
@@ -1999,7 +2126,7 @@ user_change_icon_file_authorized_cb (Daemon                *daemon,
 
                 pw = getpwuid (uid);
 
-                if (!g_spawn_async_with_pipes (NULL, (gchar**)argv, NULL, 0, become_user, pw, NULL, NULL, &std_out, NULL, &error)) {
+                if (!g_spawn_async_with_pipes (NULL, (gchar **) argv, NULL, 0, become_user, pw, NULL, NULL, &std_out, NULL, &error)) {
                         throw_error (context, ERROR_FAILED, "reading file '%s' failed: %s", filename, error->message);
                         return;
                 }
@@ -2007,7 +2134,7 @@ user_change_icon_file_authorized_cb (Daemon                *daemon,
                 input = g_unix_input_stream_new (std_out, FALSE);
 
                 bytes = g_output_stream_splice (output, input, G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, NULL, &error);
-                if (bytes < 0 || (gsize)bytes != size) {
+                if (bytes < 0 || (gsize) bytes != size) {
                         throw_error (context, ERROR_FAILED, "copying file '%s' to '%s' failed: %s", filename, dest_path, error ? error->message : "unknown reason");
                         g_file_delete (dest, NULL, NULL);
                         return;
@@ -2031,7 +2158,7 @@ user_set_icon_file (AccountsUser          *auser,
                     GDBusMethodInvocation *context,
                     const gchar           *filename)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -2051,7 +2178,7 @@ user_set_icon_file (AccountsUser          *auser,
                                  user_change_icon_file_authorized_cb,
                                  context,
                                  g_strdup (filename),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
@@ -2064,12 +2191,13 @@ user_change_locked_authorized_cb (Daemon                *daemon,
 
 {
         gboolean locked = GPOINTER_TO_INT (data);
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         const gchar *argv[5];
 
         if (accounts_user_get_locked (ACCOUNTS_USER (user)) != locked) {
                 sys_log (context,
-                         "%s account of user '%s' (%d)",
+                         "%s account of user '%s' (%" G_GUINT64_FORMAT ")",
                          locked ? "locking" : "unlocking",
                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
                          accounts_user_get_uid (ACCOUNTS_USER (user)));
@@ -2079,7 +2207,7 @@ user_change_locked_authorized_cb (Daemon                *daemon,
                 argv[3] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                 argv[4] = NULL;
 
-                if (!spawn_with_login_uid (context, argv, &error)) {
+                if (!spawn_sync (argv, &error)) {
                         throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                         return;
                 }
@@ -2087,25 +2215,25 @@ user_change_locked_authorized_cb (Daemon                *daemon,
                 accounts_user_set_locked (ACCOUNTS_USER (user), locked);
 
                 if (accounts_user_get_automatic_login (ACCOUNTS_USER (user))) {
-                    User *automatic_login_user;
+                        User *automatic_login_user;
 
-                    automatic_login_user = daemon_local_get_automatic_login_user (daemon);
-                    if (accounts_user_get_locked (ACCOUNTS_USER (user))) {
-                            /* If automatic login is enabled for the user then
-                             * disable it in the config file, but keep the state
-                             * attached to the user unharmed so it can be restored
-                             * later in the session
-                             */
-                            if (user == automatic_login_user) {
-                                    daemon_local_set_automatic_login (daemon, user, FALSE, NULL);
-                                    accounts_user_set_automatic_login (ACCOUNTS_USER (user), TRUE);
-                            }
-                    } else {
-                            if (automatic_login_user == NULL) {
-                                    accounts_user_set_automatic_login (ACCOUNTS_USER (user), FALSE);
-                                    daemon_local_set_automatic_login (daemon, user, TRUE, NULL);
-                            }
-                    }
+                        automatic_login_user = daemon_local_get_automatic_login_user (daemon);
+                        if (accounts_user_get_locked (ACCOUNTS_USER (user))) {
+                                /* If automatic login is enabled for the user then
+                                 * disable it in the config file, but keep the state
+                                 * attached to the user unharmed so it can be restored
+                                 * later in the session
+                                 */
+                                if (user == automatic_login_user) {
+                                        daemon_local_set_automatic_login (daemon, user, FALSE, NULL);
+                                        accounts_user_set_automatic_login (ACCOUNTS_USER (user), TRUE);
+                                }
+                        } else {
+                                if (automatic_login_user == NULL) {
+                                        accounts_user_set_automatic_login (ACCOUNTS_USER (user), FALSE);
+                                        daemon_local_set_automatic_login (daemon, user, TRUE, NULL);
+                                }
+                        }
                 }
 
                 accounts_user_emit_changed (ACCOUNTS_USER (user));
@@ -2121,7 +2249,8 @@ user_set_locked (AccountsUser          *auser,
                  GDBusMethodInvocation *context,
                  gboolean               locked)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
+
         daemon_local_check_auth (user->daemon,
                                  user,
                                  "org.freedesktop.accounts.user-administration",
@@ -2141,11 +2270,13 @@ user_change_account_type_authorized_cb (Daemon                *daemon,
 
 {
         AccountType account_type = GPOINTER_TO_INT (data);
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         gid_t *groups;
         gint ngroups;
-        g_autoptr(GString) str = NULL;
-        g_auto(GStrv) extra_admin_groups = NULL;
+
+        g_autoptr (GString) str = NULL;
+        g_auto (GStrv) extra_admin_groups = NULL;
         g_autofree gid_t *extra_admin_groups_gids = NULL;
         gsize n_extra_admin_groups_gids = 0;
         gid_t admin_gid;
@@ -2154,7 +2285,7 @@ user_change_account_type_authorized_cb (Daemon                *daemon,
 
         if (((AccountType) accounts_user_get_account_type (ACCOUNTS_USER (user))) != account_type) {
                 sys_log (context,
-                         "change account type of user '%s' (%d) to %d",
+                         "change account type of user '%s' (%" G_GUINT64_FORMAT ") to %d",
                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
                          accounts_user_get_uid (ACCOUNTS_USER (user)),
                          account_type);
@@ -2172,17 +2303,19 @@ user_change_account_type_authorized_cb (Daemon                *daemon,
 
                         if (groups[i] == admin_gid)
                                 group_is_admin = TRUE;
-                        for (gsize j = 0; j < n_extra_admin_groups_gids; j++)
+                        for (gsize j = 0; j < n_extra_admin_groups_gids; j++) {
                                 if (groups[i] == extra_admin_groups_gids[j])
                                         group_is_admin = TRUE;
+                        }
 
                         if (!group_is_admin)
                                 g_string_append_printf (str, "%d,", groups[i]);
                 }
                 switch (account_type) {
                 case ACCOUNT_TYPE_ADMINISTRATOR:
-                        for (i = 0; i < n_extra_admin_groups_gids; i++)
+                        for (i = 0; i < n_extra_admin_groups_gids; i++) {
                                 g_string_append_printf (str, "%d,", extra_admin_groups_gids[i]);
+                        }
 
                         g_string_append_printf (str, "%d", admin_gid);
                         break;
@@ -2202,7 +2335,7 @@ user_change_account_type_authorized_cb (Daemon                *daemon,
                 argv[4] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                 argv[5] = NULL;
 
-                if (!spawn_with_login_uid (context, argv, &error)) {
+                if (!spawn_sync (argv, &error)) {
                         throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                         return;
                 }
@@ -2222,7 +2355,8 @@ user_set_account_type (AccountsUser          *auser,
                        GDBusMethodInvocation *context,
                        gint                   account_type)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
+
         if (account_type < 0 || account_type > ACCOUNT_TYPE_LAST) {
                 throw_error (context, ERROR_FAILED, "unknown account type: %d", account_type);
                 return TRUE;
@@ -2247,12 +2381,13 @@ user_change_password_mode_authorized_cb (Daemon                *daemon,
 
 {
         PasswordMode mode = GPOINTER_TO_INT (data);
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         const gchar *argv[6];
 
         if (((PasswordMode) accounts_user_get_password_mode (ACCOUNTS_USER (user))) != mode) {
                 sys_log (context,
-                         "change password mode of user '%s' (%d) to %d",
+                         "change password mode of user '%s' (%" G_GUINT64_FORMAT ") to %d",
                          accounts_user_get_user_name (ACCOUNTS_USER (user)),
                          accounts_user_get_uid (ACCOUNTS_USER (user)),
                          mode);
@@ -2261,14 +2396,13 @@ user_change_password_mode_authorized_cb (Daemon                *daemon,
 
                 if (mode == PASSWORD_MODE_SET_AT_LOGIN ||
                     mode == PASSWORD_MODE_NONE) {
-
                         argv[0] = "/usr/bin/passwd";
                         argv[1] = "-d";
                         argv[2] = "--";
                         argv[3] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                         argv[4] = NULL;
 
-                        if (!spawn_with_login_uid (context, argv, &error)) {
+                        if (!spawn_sync (argv, &error)) {
                                 throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                                 return;
                         }
@@ -2281,7 +2415,7 @@ user_change_password_mode_authorized_cb (Daemon                *daemon,
                                 argv[4] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                                 argv[5] = NULL;
 
-                                if (!spawn_with_login_uid (context, argv, &error)) {
+                                if (!spawn_sync (argv, &error)) {
                                         throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                                         return;
                                 }
@@ -2293,15 +2427,14 @@ user_change_password_mode_authorized_cb (Daemon                *daemon,
                          * unlocking the account
                          */
                         accounts_user_set_locked (ACCOUNTS_USER (user), FALSE);
-                }
-                else if (accounts_user_get_locked (ACCOUNTS_USER (user))) {
+                } else if (accounts_user_get_locked (ACCOUNTS_USER (user))) {
                         argv[0] = "/usr/sbin/usermod";
                         argv[1] = "-U";
                         argv[2] = "--";
                         argv[3] = accounts_user_get_user_name (ACCOUNTS_USER (user));
                         argv[4] = NULL;
 
-                        if (!spawn_with_login_uid (context, argv, &error)) {
+                        if (!spawn_sync (argv, &error)) {
                                 throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                                 return;
                         }
@@ -2324,7 +2457,7 @@ user_set_password_mode (AccountsUser          *auser,
                         GDBusMethodInvocation *context,
                         gint                   mode)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         const gchar *action_id;
         gint uid;
 
@@ -2355,6 +2488,13 @@ user_set_password_mode (AccountsUser          *auser,
 }
 
 static void
+free_passwords (gchar **strings)
+{
+        memset (strings[0], 0, strlen (strings[0]));
+        g_strfreev (strings);
+}
+
+static void
 user_change_password_authorized_cb (Daemon                *daemon,
                                     User                  *user,
                                     GDBusMethodInvocation *context,
@@ -2362,24 +2502,33 @@ user_change_password_authorized_cb (Daemon                *daemon,
 
 {
         gchar **strings = data;
-        g_autoptr(GError) error = NULL;
-        const gchar *argv[6];
+
+        g_autoptr (GError) error = NULL;
+        g_autoptr (GSubprocess) process = NULL;
+        const char *argv[] = { "/usr/sbin/chpasswd", "-e", NULL };
 
         sys_log (context,
-                 "set password and hint of user '%s' (%d)",
+                 "set password and hint of user '%s' (%" G_GUINT64_FORMAT ")",
                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
                  accounts_user_get_uid (ACCOUNTS_USER (user)));
 
         g_object_freeze_notify (G_OBJECT (user));
 
-        argv[0] = "/usr/sbin/usermod";
-        argv[1] = "-p";
-        argv[2] = strings[0];
-        argv[3] = "--";
-        argv[4] = accounts_user_get_user_name (ACCOUNTS_USER (user));
-        argv[5] = NULL;
+        process = g_subprocess_newv (argv,
+                                     G_SUBPROCESS_FLAGS_STDIN_PIPE,
+                                     &error);
 
-        if (!spawn_with_login_uid (context, argv, &error)) {
+        if (process == NULL) {
+                throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
+                return;
+        }
+
+        if (!g_subprocess_communicate_utf8 (process, strings[0], NULL, NULL, NULL, &error)) {
+                throw_error (context, ERROR_FAILED, "writing input to '%s' failed: %s", argv[0], error->message);
+                return;
+        }
+
+        if (!compat_check_exit_status (g_subprocess_get_status (process), &error)) {
                 throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                 return;
         }
@@ -2395,20 +2544,13 @@ user_change_password_authorized_cb (Daemon                *daemon,
         accounts_user_complete_set_password (ACCOUNTS_USER (user), context);
 }
 
-static void
-free_passwords (gchar **strings)
-{
-        memset (strings[0], 0, strlen (strings[0]));
-        g_strfreev (strings);
-}
-
 static gboolean
 user_set_password (AccountsUser          *auser,
                    GDBusMethodInvocation *context,
                    const gchar           *password,
                    const gchar           *hint)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         gchar **data;
         const gchar *action_id;
         gint uid;
@@ -2419,7 +2561,9 @@ user_set_password (AccountsUser          *auser,
         }
 
         data = g_new (gchar *, 3);
-        data[0] = g_strdup (password);
+        data[0] = g_strdup_printf ("%s:%s\n",
+                                   accounts_user_get_user_name (ACCOUNTS_USER (user)),
+                                   password);
         data[1] = g_strdup (hint);
         data[2] = NULL;
 
@@ -2434,9 +2578,9 @@ user_set_password (AccountsUser          *auser,
                                  user_change_password_authorized_cb,
                                  context,
                                  data,
-                                 (GDestroyNotify)free_passwords);
+                                 (GDestroyNotify) free_passwords);
 
-        memset ((char*)password, 0, strlen (password));
+        memset ((char *) password, 0, strlen (password));
 
         return TRUE;
 }
@@ -2450,7 +2594,7 @@ user_change_password_hint_authorized_cb (Daemon                *daemon,
         gchar *hint = data;
 
         sys_log (context,
-                 "set password hint of user '%s' (%d)'",
+                 "set password hint of user '%s' (%" G_GUINT64_FORMAT ")'",
                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
                  accounts_user_get_uid (ACCOUNTS_USER (user)));
 
@@ -2468,7 +2612,7 @@ user_set_password_hint (AccountsUser          *auser,
                         GDBusMethodInvocation *context,
                         const gchar           *hint)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
         int uid;
         const gchar *action_id;
 
@@ -2488,7 +2632,7 @@ user_set_password_hint (AccountsUser          *auser,
                                  user_change_password_hint_authorized_cb,
                                  context,
                                  g_strdup (hint),
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
@@ -2500,10 +2644,11 @@ user_change_automatic_login_authorized_cb (Daemon                *daemon,
                                            gpointer               data)
 {
         gboolean enabled = GPOINTER_TO_INT (data);
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
 
         sys_log (context,
-                 "%s automatic login for user '%s' (%d)",
+                 "%s automatic login for user '%s' (%" G_GUINT64_FORMAT ")",
                  enabled ? "enable" : "disable",
                  accounts_user_get_user_name (ACCOUNTS_USER (user)),
                  accounts_user_get_uid (ACCOUNTS_USER (user)));
@@ -2526,7 +2671,8 @@ user_set_automatic_login (AccountsUser          *auser,
                           GDBusMethodInvocation *context,
                           gboolean               enabled)
 {
-        User *user = (User*)auser;
+        User *user = (User *) auser;
+
         daemon_local_check_auth (user->daemon,
                                  user,
                                  "org.freedesktop.accounts.user-administration",
@@ -2546,7 +2692,7 @@ user_finalize (GObject *object)
         user = USER (object);
 
         if (user->changed_timeout_id != 0)
-            g_source_remove (user->changed_timeout_id);
+                g_source_remove (user->changed_timeout_id);
 
         g_clear_pointer (&user->keyfile, g_key_file_unref);
 
@@ -2580,6 +2726,7 @@ user_accounts_user_iface_init (AccountsUserIface *iface)
         iface->handle_set_home_directory = user_set_home_directory;
         iface->handle_set_icon_file = user_set_icon_file;
         iface->handle_set_language = user_set_language;
+        iface->handle_set_languages = user_set_languages;
         iface->handle_set_location = user_set_location;
         iface->handle_set_locked = user_set_locked;
         iface->handle_set_password = user_set_password;

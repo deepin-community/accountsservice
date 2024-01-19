@@ -1,0 +1,13 @@
+[com.endlessm.ParentalControls.AppFilter]
+AppFilter=(false, [])
+OarsFilter=('oars-1.1', {})
+AllowUserInstallation=true
+AllowSystemInstallation=true
+
+[User]
+Language=
+Session=
+XSession=
+PasswordHint=
+Icon=@ROOTDIR@/var/lib/AccountsService/icons/benedict
+SystemAccount=false

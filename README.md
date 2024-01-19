@@ -19,8 +19,13 @@ See the COPYING file.
 Installation
 ============
 
-See the INSTALL file.
+The AccountsService uses the following libraries:
 
+ - GLib, polkit, libxcrypt or the crypt library
+ - systemd for libsystemd
+
+At runtime, the daemon uses the polkit and logind D-Bus services
+and utilities from the shadow-utils package.
 
 Contributing
 ============

@@ -25,11 +25,8 @@ try:
 except (ImportError, ValueError):
     have_accounts_service = False
 
-
-@unittest.skipUnless(have_accounts_service,
-                     'AccountsService gi introspection not available')
-class TestAccountsService(dbusmock.DBusTestCase):
-    '''Test mocking AccountsService'''
+class AccountsServiceTestBase(dbusmock.DBusTestCase):
+    '''Base class for accountsservice test cases'''
 
     @classmethod
     def setUpClass(cls):
@@ -40,10 +37,11 @@ class TestAccountsService(dbusmock.DBusTestCase):
 
     def setUp(self):
         super().setUp()
-        template = os.path.join(
-            os.path.dirname(__file__), 'dbusmock/accounts_service.py')
-        (self._mock, self._mock_obj) = self.spawn_server_template(
-            template, {}, stdout=subprocess.PIPE)
+        if not hasattr(self, '_mock'):
+            template = os.path.join(
+                os.path.dirname(__file__), 'dbusmock/accounts_service.py')
+            (self._mock, self._mock_obj) = self.spawn_server_template(
+                template, {}, stdout=subprocess.PIPE)
         self._manager = AccountsService.UserManager.get_default()
         while not self._manager.props.is_loaded:
             self.ctx.iteration(True)
@@ -83,6 +81,47 @@ class TestAccountsService(dbusmock.DBusTestCase):
         while not changed:
             self.ctx.iteration(True)
         user.disconnect(conn_id)
+
+@unittest.skipUnless(have_accounts_service,
+                     'AccountsService gi introspection not available')
+class TestAccountsServicePreExistingUser(AccountsServiceTestBase):
+    '''Test mocking AccountsService with pre-existing user'''
+    def setUp(self):
+        template = os.path.join(
+            os.path.dirname(__file__), 'dbusmock/accounts_service.py')
+        (self._mock, self._mock_obj) = self.spawn_server_template(
+            template, {'users': { 2001: 'pizza' }}, stdout=subprocess.PIPE)
+        super().setUp()
+
+    def test_multiple_inflight_get_user_by_id_calls(self):
+        user_objects = []
+
+        for double_instances in range(5):
+            user_objects.append(self._manager.get_user_by_id(2001))
+            user_objects.append(self._manager.get_user('pizza'))
+
+        for second in range(10):
+            done = True
+            for user in user_objects:
+                if not user.is_loaded():
+                    self.ctx.iteration(True)
+                    done = False
+            if done:
+                    break
+            else:
+                 time.sleep(1)
+
+        for instance in range(len(user_objects)):
+            self.assertTrue(user_objects[instance].is_loaded())
+
+        for user in user_objects:
+            self.assertEquals(user.get_user_name(), 'pizza')
+            self.assertEquals(user.get_uid(), 2001)
+
+@unittest.skipUnless(have_accounts_service,
+                     'AccountsService gi introspection not available')
+class TestAccountsService(AccountsServiceTestBase):
+    '''Test mocking AccountsService'''
 
     def test_empty(self):
         self.assertTrue(self._manager.props.is_loaded)
@@ -314,9 +353,13 @@ class TestAccountsService(dbusmock.DBusTestCase):
         self.wait_changed(user)
         self.assertEqual(user.get_icon_file(), '/nonexistant/home/icon.png')
 
-        user.set_language('Test Language')
+        user.set_language('fr_FR.UTF-8')
         self.wait_changed(user)
-        self.assertEqual(user.get_language(), 'Test Language')
+        self.assertEqual(user.get_language(), 'fr_FR.UTF-8')
+
+        user.set_languages(['en_GB.UTF-8', 'fr_FR.UTF-8'])
+        self.wait_changed(user)
+        self.assertEqual(user.get_languages(), ['en_GB.UTF-8', 'fr_FR.UTF-8'])
 
         user.set_location('Test Location')
         self.wait_changed(user)

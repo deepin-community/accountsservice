@@ -55,8 +55,8 @@ static void
 daemon_read_extension_file (GHashTable  *ifaces,
                             const gchar *filename)
 {
-        g_autoptr(GError) error = NULL;
-        g_autoptr(GDBusNodeInfo) node = NULL;
+        g_autoptr (GError) error = NULL;
+        g_autoptr (GDBusNodeInfo) node = NULL;
         g_autofree gchar *contents = NULL;
         gint i;
 
@@ -71,8 +71,9 @@ daemon_read_extension_file (GHashTable  *ifaces,
                 return;
         }
 
-        for (i = 0; node->interfaces && node->interfaces[i]; i++)
+        for (i = 0; node->interfaces && node->interfaces[i]; i++) {
                 daemon_maybe_add_extension_interface (ifaces, node->interfaces[i]);
+        }
 }
 
 static void
@@ -125,8 +126,7 @@ daemon_read_extension_directory (GHashTable  *ifaces,
                 const gchar * const prefix = "../../dbus-1/interfaces/";
                 if (g_str_has_prefix (symlink, prefix) && g_str_equal (symlink + strlen (prefix), name)) {
                         daemon_read_extension_file (ifaces, filename);
-                }
-                else {
+                } else {
                         g_warning ("Found accounts service vendor extension symlink %s, but it must be exactly "
                                    "equal to '../../dbus-1/interfaces/%s' for forwards-compatibility reasons.",
                                    filename, name);

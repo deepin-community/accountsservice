@@ -29,16 +29,18 @@
 
 #include <utmpx.h>
 
-typedef struct {
+typedef struct
+{
         guint64 frequency;
-        gint64 time;
-        GList *previous_logins;
+        gint64  time;
+        GList  *previous_logins;
 } UserAccounting;
 
-typedef struct {
-        gchar  *id;
-        gint64  login_time;
-        gint64  logout_time;
+typedef struct
+{
+        gchar *id;
+        gint64 login_time;
+        gint64 logout_time;
 } UserPreviousLogin;
 
 static void
@@ -52,20 +54,20 @@ static gboolean
 wtmp_helper_start (void)
 {
 #if defined(HAVE_SETUTXDB)
-                if (setutxdb (UTXDB_LOG, NULL) != 0) {
-                        return FALSE;
-                }
+        if (setutxdb (UTXDB_LOG, NULL) != 0) {
+                return FALSE;
+        }
 #elif defined(PATH_WTMP)
-                if (utmpxname (PATH_WTMP) != 0) {
-                        return FALSE;
-                }
+        if (utmpxname (PATH_WTMP) != 0) {
+                return FALSE;
+        }
 
-                setutxent ();
+        setutxent ();
 #else
 #error You have utmpx.h, but no known way to use it for wtmp entries
 #endif
 
-                return TRUE;
+        return TRUE;
 }
 
 void
@@ -87,7 +89,7 @@ wtmp_helper_update_login_frequencies (GHashTable *users)
         logout_hash = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
         while ((wtmp_entry = getutxent ())) {
-                UserAccounting    *accounting;
+                UserAccounting *accounting;
                 UserPreviousLogin *previous_login;
                 gboolean shutdown_or_reboot = FALSE;
 
@@ -157,11 +159,11 @@ wtmp_helper_update_login_frequencies (GHashTable *users)
 
         g_hash_table_iter_init (&iter, login_hash);
         while (g_hash_table_iter_next (&iter, &key, &value)) {
-                UserAccounting    *accounting = (UserAccounting *) value;
+                UserAccounting *accounting = (UserAccounting *) value;
                 UserPreviousLogin *previous_login;
-                gboolean           changed = FALSE;
-                guint64            old_login_frequency;
-                guint64            old_login_time;
+                gboolean changed = FALSE;
+                guint64 old_login_frequency;
+                guint64 old_login_time;
 
                 user = g_hash_table_lookup (users, key);
                 if (user == NULL) {

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Workaround for https://github.com/gcovr/gcovr/issues/710
+exec /usr/bin/gcovr --gcov-ignore-parse-errors "$@"

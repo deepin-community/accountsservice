@@ -1,0 +1,13 @@
+
+--- accountsservice-23.13.9.orig/generate-version.sh
++++ accountsservice-23.13.9/generate-version.sh
+@@ -9,7 +9,8 @@ exec 2>&3
+ 
+ # If it's not from a git checkout, assume it's from a tarball
+ if [ "$TOPLEVEL_WORKING_DIR" != "$CWD" ]; then
+-    VERSION_FROM_DIR_NAME=$(basename "$CWD" | sed -n 's/^accountsservice-\([^-]*\)$/\1/p')
++    #VERSION_FROM_DIR_NAME=$(basename "$CWD" | sed -n 's/^accountsservice-\([^-]*\)$/\1/p')
++    VERSION_FROM_DIR_NAME=$(grep -m1 -o '([^)]*' debian/changelog | sed 's/[^0-9.]*//' | sed 's/-.*//')
+ 
+     if [ -n "$VERSION_FROM_DIR_NAME" ]; then
+         echo "$VERSION_FROM_DIR_NAME"

@@ -1,5 +1,6 @@
 option('systemdsystemunitdir', type: 'string', value: '', description: 'custom directory for systemd system units')
 option('gdmconffile', type: 'string', value: '/etc/gdm/custom.conf', description: 'GDM configuration file')
+option('lightdmconffile', type: 'string', value: '/etc/lightdm/lightdm.conf', description: 'LightDM configuration file')
 
 option('admin_group', type: 'string', value: '', description: 'Set group for administrative accounts')
 option('extra_admin_groups', type: 'array', value: [], description: 'Comma-separated list of extra groups that administrator users are part of')

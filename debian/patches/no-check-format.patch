@@ -1,0 +1,12 @@
+# Description: skip formatting check made for the git repository
+# Forwarded: not-needed
+Index: accountsservice/tests/meson.build
+===================================================================
+--- accountsservice.orig/tests/meson.build	2023-06-21 12:28:58.661758161 +0200
++++ accountsservice/tests/meson.build	2023-06-21 13:01:11.970343408 +0200
+@@ -1,4 +1,4 @@
+-test('check-format', find_program('check-format.sh'))
++#test('check-format', find_program('check-format.sh'))
+ 
+ libmocklibc = subproject('mocklibc').get_variable('libmocklibc')
+ 

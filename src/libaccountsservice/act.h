@@ -18,11 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef __ACT_H__
-#define __ACT_H__
+#pragma once
 
 #include <act/act-user-enum-types.h>
 #include <act/act-user.h>
 #include <act/act-user-manager.h>
-
-#endif /* __ACT_H__ */

@@ -19,21 +19,14 @@
  * Written by: Matthias Clasen <mclasen@redhat.com>
  */
 
-#ifndef __ACCOUNTS_DAEMON_H__
-#define __ACCOUNTS_DAEMON_H__
-
-G_BEGIN_DECLS
+#pragma once
 
 #define TYPE_DAEMON (daemon_get_type ())
 #define DAEMON(o)           (G_TYPE_CHECK_INSTANCE_CAST ((o), TYPE_DAEMON, Daemon))
-#define DAEMON_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST((k), TYPE_DAEMON, DaemonClass))
+#define DAEMON_CLASS(k)     (G_TYPE_CHECK_CLASS_CAST ((k), TYPE_DAEMON, DaemonClass))
 #define IS_DAEMON(o)        (G_TYPE_CHECK_INSTANCE_TYPE ((o), TYPE_DAEMON))
 #define IS_DAEMON_CLASS(k)  (G_TYPE_CHECK_CLASS_TYPE ((k), TYPE_DAEMON))
 #define DAEMON_GET_CLASS(o) (G_TYPE_INSTANCE_GET_CLASS ((o), TYPE_DAEMON, DaemonClass))
 
 typedef struct DaemonClass DaemonClass;
 typedef struct DaemonPrivate DaemonPrivate;
-
-G_END_DECLS
-
-#endif
