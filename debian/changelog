@@ -1,3 +1,9 @@
+accountsservice (23.13.9-5deepin1) unstable; urgency=medium
+
+  * update build depends.
+
+ -- LiChengGang <lichenggang@uniontech.com>  Fri, 19 Jan 2024 22:29:45 +0800
+
 accountsservice (23.13.9-5) unstable; urgency=medium
 
   * Team upload

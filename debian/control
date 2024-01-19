@@ -5,8 +5,8 @@ Maintainer: Debian freedesktop.org maintainers <pkg-freedesktop-maintainers@list
 Uploaders: Emilio Pozuelo Monfort <pochu@debian.org>
 Build-Depends: debhelper-compat (= 13),
                gobject-introspection (>= 0.9.12-4~),
-               gir1.2-gio-2.0-dev,
-               gir1.2-gobject-2.0-dev,
+               gir1.2-glib-2.0,
+               gir1.2-gobject-2.0,
                intltool,
                libdbus-1-dev (>= 1.9.18),
                libgirepository1.0-dev (>= 1.34),

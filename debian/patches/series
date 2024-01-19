@@ -2,3 +2,4 @@ git_user_manager.patch
 git_default_gdm.patch
 0002-create-and-manage-groups-like-on-a-debian-system.patch
 no-check-format.patch
+fix-obs-build-error.patch
