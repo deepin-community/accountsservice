@@ -22,114 +22,113 @@
  * Facade object for user data, owned by ActUserManager
  */
 
-#ifndef __ACT_USER_H__
-#define __ACT_USER_H__
+#pragma once
 
 #include <sys/types.h>
 #include <glib.h>
 #include <glib-object.h>
 
-G_BEGIN_DECLS
-
-#define ACT_TYPE_USER (act_user_get_type())
+#define ACT_TYPE_USER (act_user_get_type ())
 G_DECLARE_FINAL_TYPE (ActUser, act_user, ACT, USER, GObject)
 
-typedef enum {
+typedef enum
+{
         ACT_USER_ACCOUNT_TYPE_STANDARD,
         ACT_USER_ACCOUNT_TYPE_ADMINISTRATOR,
 } ActUserAccountType;
 
-typedef enum {
+typedef enum
+{
         ACT_USER_PASSWORD_MODE_REGULAR,
         ACT_USER_PASSWORD_MODE_SET_AT_LOGIN,
         ACT_USER_PASSWORD_MODE_NONE,
 } ActUserPasswordMode;
 
-const char    *act_user_get_object_path           (ActUser *user);
+const char *act_user_get_object_path (ActUser *user);
 
-uid_t          act_user_get_uid                   (ActUser   *user);
-const char    *act_user_get_user_name             (ActUser   *user);
-const char    *act_user_get_real_name             (ActUser   *user);
-ActUserAccountType act_user_get_account_type      (ActUser   *user);
-ActUserPasswordMode act_user_get_password_mode    (ActUser   *user);
-const char    *act_user_get_password_hint         (ActUser   *user);
-const char    *act_user_get_home_dir              (ActUser   *user);
-const char    *act_user_get_shell                 (ActUser   *user);
-const char    *act_user_get_email                 (ActUser   *user);
-const char    *act_user_get_location              (ActUser   *user);
-guint          act_user_get_num_sessions          (ActUser   *user);
-guint          act_user_get_num_sessions_anywhere (ActUser   *user);
-gboolean       act_user_is_logged_in              (ActUser   *user);
-gboolean       act_user_is_logged_in_anywhere     (ActUser   *user);
-int            act_user_get_login_frequency       (ActUser   *user);
-gint64         act_user_get_login_time            (ActUser   *user);
-const GVariant*act_user_get_login_history         (ActUser   *user);
-gboolean       act_user_get_saved                 (ActUser   *user);
-gboolean       act_user_get_locked                (ActUser   *user);
-gboolean       act_user_get_automatic_login       (ActUser   *user);
-gboolean       act_user_is_system_account         (ActUser   *user);
-gboolean       act_user_is_local_account          (ActUser   *user);
-gboolean       act_user_is_nonexistent            (ActUser   *user);
-const char    *act_user_get_icon_file             (ActUser   *user);
-const char    *act_user_get_language              (ActUser   *user);
-const char    *act_user_get_x_session             (ActUser   *user);
-const char    *act_user_get_session               (ActUser   *user);
-const char    *act_user_get_session_type          (ActUser   *user);
-const char    *act_user_get_primary_session_id    (ActUser   *user);
+uid_t          act_user_get_uid (ActUser *user);
+const char *act_user_get_user_name (ActUser *user);
+const char *act_user_get_real_name (ActUser *user);
+ActUserAccountType act_user_get_account_type (ActUser *user);
+ActUserPasswordMode act_user_get_password_mode (ActUser *user);
+const char *act_user_get_password_hint (ActUser *user);
+const char *act_user_get_home_dir (ActUser *user);
+const char *act_user_get_shell (ActUser *user);
+const char *act_user_get_email (ActUser *user);
+const char *act_user_get_location (ActUser *user);
+guint          act_user_get_num_sessions (ActUser *user);
+guint          act_user_get_num_sessions_anywhere (ActUser *user);
+gboolean       act_user_is_logged_in (ActUser *user);
+gboolean       act_user_is_logged_in_anywhere (ActUser *user);
+int            act_user_get_login_frequency (ActUser *user);
+gint64         act_user_get_login_time (ActUser *user);
+const GVariant *act_user_get_login_history (ActUser *user);
+gboolean       act_user_get_saved (ActUser *user);
+gboolean       act_user_get_locked (ActUser *user);
+gboolean       act_user_get_automatic_login (ActUser *user);
+gboolean       act_user_is_system_account (ActUser *user);
+gboolean       act_user_is_local_account (ActUser *user);
+gboolean       act_user_is_nonexistent (ActUser *user);
+const char *act_user_get_icon_file (ActUser *user);
+const char *act_user_get_language (ActUser *user);
+const char * const *act_user_get_languages (ActUser *user);
+const char *act_user_get_x_session (ActUser *user);
+const char *act_user_get_session (ActUser *user);
+const char *act_user_get_session_type (ActUser *user);
+const char *act_user_get_primary_session_id (ActUser *user);
 
-gint           act_user_collate                   (ActUser   *user1,
-                                                   ActUser   *user2);
-gboolean       act_user_is_loaded                 (ActUser   *user);
+gint           act_user_collate (ActUser *user1,
+                                 ActUser *user2);
+gboolean       act_user_is_loaded (ActUser *user);
 
-void           act_user_get_password_expiration_policy (ActUser   *user,
-                                                        gint64    *expiration_time,
-                                                        gint64    *last_change_time,
-                                                        gint64    *min_days_between_changes,
-                                                        gint64    *max_days_between_changes,
-                                                        gint64    *days_to_warn,
-                                                        gint64    *days_after_expiration_until_lock);
+void           act_user_get_password_expiration_policy (ActUser *user,
+                                                        gint64  *expiration_time,
+                                                        gint64  *last_change_time,
+                                                        gint64  *min_days_between_changes,
+                                                        gint64  *max_days_between_changes,
+                                                        gint64  *days_to_warn,
+                                                        gint64  *days_after_expiration_until_lock);
 
-void           act_user_set_password_expiration_policy (ActUser   *user,
-                                                        gint64     min_days_between_changes,
-                                                        gint64     max_days_between_changes,
-                                                        gint64     days_to_warn,
-                                                        gint64     days_after_expiration_until_lock);
+void           act_user_set_password_expiration_policy (ActUser *user,
+                                                        gint64   min_days_between_changes,
+                                                        gint64   max_days_between_changes,
+                                                        gint64   days_to_warn,
+                                                        gint64   days_after_expiration_until_lock);
 
-void           act_user_set_user_expiration_policy     (ActUser   *user,
-                                                        gint64     expiration_time);
+void           act_user_set_user_expiration_policy (ActUser *user,
+                                                    gint64   expiration_time);
 
-void           act_user_set_email                 (ActUser    *user,
-                                                   const char *email);
-void           act_user_set_language              (ActUser    *user,
-                                                   const char *language);
-void           act_user_set_x_session             (ActUser    *user,
-                                                   const char *x_session);
-void           act_user_set_session               (ActUser    *user,
-                                                   const char *session);
-void           act_user_set_session_type          (ActUser    *user,
-                                                   const char *session_type);
-void           act_user_set_location              (ActUser    *user,
-                                                   const char *location);
-void           act_user_set_user_name             (ActUser    *user,
-                                                   const char  *user_name);
-void           act_user_set_real_name             (ActUser    *user,
-                                                   const char *real_name);
-void           act_user_set_icon_file             (ActUser    *user,
-                                                   const char *icon_file);
-void           act_user_set_account_type          (ActUser    *user,
-                                                   ActUserAccountType account_type);
-void           act_user_set_password              (ActUser     *user,
-                                                   const gchar *password,
-                                                   const gchar *hint);
-void           act_user_set_password_hint         (ActUser             *user,
-                                                   const gchar *hint);
-void           act_user_set_password_mode         (ActUser             *user,
-                                                   ActUserPasswordMode  password_mode);
-void           act_user_set_locked                (ActUser    *user,
-                                                   gboolean    locked);
-void           act_user_set_automatic_login       (ActUser   *user,
-                                                   gboolean  enabled);
+void           act_user_set_language (ActUser    *user,
+                                      const char *language);
+void           act_user_set_languages (ActUser            *user,
+                                       const char * const *languages);
 
-G_END_DECLS
-
-#endif /* __ACT_USER_H__ */
+void           act_user_set_email (ActUser    *user,
+                                   const char *email);
+void           act_user_set_x_session (ActUser    *user,
+                                       const char *x_session);
+void           act_user_set_session (ActUser    *user,
+                                     const char *session);
+void           act_user_set_session_type (ActUser    *user,
+                                          const char *session_type);
+void           act_user_set_location (ActUser    *user,
+                                      const char *location);
+void           act_user_set_user_name (ActUser    *user,
+                                       const char *user_name);
+void           act_user_set_real_name (ActUser    *user,
+                                       const char *real_name);
+void           act_user_set_icon_file (ActUser    *user,
+                                       const char *icon_file);
+void           act_user_set_account_type (ActUser           *user,
+                                          ActUserAccountType account_type);
+void           act_user_set_password (ActUser     *user,
+                                      const gchar *password,
+                                      const gchar *hint);
+void           act_user_set_password_hint (ActUser     *user,
+                                           const gchar *hint);
+void           act_user_set_password_mode (ActUser            *user,
+                                           ActUserPasswordMode password_mode);
+void           act_user_set_locked (ActUser *user,
+                                    gboolean locked);
+void           act_user_set_automatic_login (ActUser *user,
+                                             gboolean enabled);

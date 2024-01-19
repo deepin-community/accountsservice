@@ -18,15 +18,11 @@
  * Author: Ryan Lortie <desrt@desrt.ca>
  */
 
-#ifndef __USER_CLASSIFY_H__
-#define __USER_CLASSIFY_H__
+#pragma once
 
 #include <sys/types.h>
 #include <glib.h>
 
-gboolean        user_classify_is_human          (uid_t        uid,
-                                                 const gchar *username,
-                                                 const gchar *shell,
-                                                 const gchar *password_hash);
-
-#endif /* __USER_CLASSIFY_H__ */
+gboolean        user_classify_is_human (uid_t        uid,
+                                        const gchar *username,
+                                        const gchar *shell);

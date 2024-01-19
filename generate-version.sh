@@ -1,6 +1,8 @@
 #!/bin/sh
 
 exec 3>&2 2> /dev/null
+SRCDIR=$(dirname "$0")
+cd "$SRCDIR"
 CWD=$(realpath "$PWD")
 TOPLEVEL_WORKING_DIR=$(realpath "$(git rev-parse --show-toplevel)")
 exec 2>&3

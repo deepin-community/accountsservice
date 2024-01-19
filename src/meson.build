@@ -64,7 +64,7 @@ deps = [
   polkit_gobject_dep,
 ]
 
-executable(
+daemon = executable(
   'accounts-daemon',
   sources,
   include_directories: top_inc,

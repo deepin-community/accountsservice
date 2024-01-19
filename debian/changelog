@@ -1,3 +1,59 @@
+accountsservice (23.13.9-5) unstable; urgency=medium
+
+  * Team upload
+  * d/control: Add ${gir:Depends}, ${gir:Provides} to -dev package
+    (Helps: #1030223)
+  * d/control: Explicitly build-depend on GIR XML included by
+    AccountsService-1.0.gir (Helps: #1030223)
+
+ -- Simon McVittie <smcv@debian.org>  Wed, 15 Nov 2023 12:14:43 +0000
+
+accountsservice (23.13.9-4) unstable; urgency=medium
+
+  * Team upload
+  * Add locales-all to Build-Depends and enable Tests.test_languages
+    - Dropped d/p/Disable-test_languages.patch
+
+ -- Gunnar Hjalmarsson <gunnarhj@debian.org>  Mon, 04 Sep 2023 23:18:38 +0200
+
+accountsservice (23.13.9-3) unstable; urgency=medium
+
+  * Team upload
+  * debian/patches/Disable-test_languages.patch
+    - Temporary measure to work around failed test when building
+      (closes: #1038865, #1041687).
+
+ -- Gunnar Hjalmarsson <gunnarhj@debian.org>  Sat, 26 Aug 2023 03:37:58 +0200
+
+accountsservice (23.13.9-2) unstable; urgency=medium
+
+  * debian/patches/git_user_manager.patch:
+    - Disconnect from manager signals when freeing a request and resolve
+      indicator-messages crashing on logout (lp: #2015962)
+  * debian/patches/git_default_gdm.patch:
+    - default to gdm if there display-manager.service isn't a known target,
+      which is the case for our gdm called gdm3, fixes the service
+      crashing when trying to toggle autologin (lp: #2024870)
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Mon, 26 Jun 2023 16:20:50 +0200
+
+accountsservice (23.13.9-1) unstable; urgency=medium
+
+  * New upstream version
+  * Remove cherrpick patches which are included in the new tarball
+  * debian/patches/0002-create-and-manage-groups-like-on-a-debian-system.patch:
+    - updated to not use a deprecated function anymore
+  * debian/patches/0005-gdm_config_file_path.patch:
+    - removed, the gdm config file is specified in debian/rules now
+  * debian/patches/0007-add-lightdm-support.patch:
+    - removed, the feature has been included upstream
+  * debian/patches/no-check-format.patch:
+    - skip a formatting test which is written to work on a git repo checkout
+  * debian/libaccountsservice0.symbols:
+    - include new symbols
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Wed, 21 Jun 2023 13:08:37 +0200
+
 accountsservice (22.08.8-6) unstable; urgency=medium
 
   * Team upload

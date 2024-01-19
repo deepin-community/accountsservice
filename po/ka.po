@@ -1,61 +1,74 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# 
+# Georgian translation for AccountService.
+# Copyright (C) 2022 AccountService authors
+# This file is distributed under the same license as the AccountService package.
+#
 # Translators:
 # George Machitidze <giomac@gmail.com>, 2012
+# Temuri Doghonadze <temuri.doghonadze@gmail.com>, 2022
 msgid ""
 msgstr ""
 "Project-Id-Version: accounts service\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2013-01-17 09:48-0500\n"
-"PO-Revision-Date: 2019-02-22 14:19+0000\n"
-"Last-Translator: halfline <halfline@gmail.com>\n"
-"Language-Team: Georgian (http://www.transifex.com/freedesktop/accountsservice/language/ka/)\n"
+"POT-Creation-Date: 2022-11-12 04:35+0100\n"
+"PO-Revision-Date: 2022-11-20 08:05+0100\n"
+"Last-Translator: Temuri Doghonadze <temuri.doghonadze@gmail.com>\n"
+"Language-Team: Georgian (http://www.transifex.com/freedesktop/"
+"accountsservice/language/ka/)\n"
+"Language: ka\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Language: ka\n"
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
+"X-Generator: Poedit 3.2\n"
 
-#: ../data/org.freedesktop.accounts.policy.in.h:1
+#: data/org.freedesktop.accounts.policy.in:11
 msgid "Change your own user data"
-msgstr "თქვენი პირადი ინფორმაციის შეცვლა"
+msgstr "თქვენი მომხმარებლის მონაცემების შეცვლა"
 
-#: ../data/org.freedesktop.accounts.policy.in.h:2
+#: data/org.freedesktop.accounts.policy.in:12
 msgid "Authentication is required to change your own user data"
-msgstr "თქვენი პირადი მონაცემების შესაცვლელად აუცილებელია ავთენტიფიკაციის გავლა."
+msgstr "თქვენი მომხმარებლის მონაცემების შესაცვლელად ავთენტიკაცია აუცილებელია"
 
-#: ../data/org.freedesktop.accounts.policy.in.h:3
+#: data/org.freedesktop.accounts.policy.in:21
+msgid "Change your own user password"
+msgstr "თქვენი მომხმარებლის პაროლის შეცვლა"
+
+#: data/org.freedesktop.accounts.policy.in:22
+msgid "Authentication is required to change your own user password"
+msgstr "თქვენი მომხმარებლის პაროლის შესაცვლელად ავთენტიკაცია აუცილებელია"
+
+#: data/org.freedesktop.accounts.policy.in:31
 msgid "Manage user accounts"
 msgstr "მოხმარებლების ანგარიშების მართვა"
 
-#: ../data/org.freedesktop.accounts.policy.in.h:4
+#: data/org.freedesktop.accounts.policy.in:32
 msgid "Authentication is required to change user data"
-msgstr "მოხმარებლის მონაცემების შესაცვლელად აუცილებელია ავთენტიფიკაციის გავლა."
+msgstr "მოხმარებლის მონაცემების შესაცვლელად ავთენტიკაცია აუცილებელია"
 
-#: ../data/org.freedesktop.accounts.policy.in.h:5
+#: data/org.freedesktop.accounts.policy.in:41
 msgid "Change the login screen configuration"
 msgstr "შესასვლელი ეკრანის კონფიგურაციის შეცვლა"
 
-#: ../data/org.freedesktop.accounts.policy.in.h:6
+#: data/org.freedesktop.accounts.policy.in:42
 msgid "Authentication is required to change the login screen configuration"
-msgstr "შესასვლელი ეკრანის კონფიგურაციის შესაცვლელად აუცილებელია ავთენტიფიკაციის გავლა."
+msgstr "შესასვლელი ეკრანის კონფიგურაციის შესაცვლელად ავთენტიკაცია აუცილებელია"
 
-#: ../src/main.c:127
+#: src/main.c:225
 msgid "Output version information and exit"
-msgstr "ვერსიის შესახებ ინფორმაციის გამოტანა და გამოსვლა"
+msgstr "ვერსიის შესახებ ინფორმაციის გამოტანა და გასვლა"
 
-#: ../src/main.c:128
+#: src/main.c:226
 msgid "Replace existing instance"
-msgstr "არსებული პროცესის გამოცვლა"
+msgstr "არსებული გაშვებული ასლის ჩანაცვლება"
 
-#: ../src/main.c:129
+#: src/main.c:227
 msgid "Enable debugging code"
 msgstr "კოდის გამართვის ჩართვა"
 
-#: ../src/main.c:149
+#: src/main.c:246
 msgid ""
 "Provides D-Bus interfaces for querying and manipulating\n"
 "user account information."
-msgstr "წარმოადგენს D-Bus ინტერფეისებს მოხმარებლის ანგარიშების გამოთხოვნისთვის და მათზე მანიპულირებისთვის"
+msgstr ""
+"წარმოადგენს D-Bus ინტერფეისებს მოხმარებლის ანგარიშების \n"
+"გამოთხოვნისთვის და მათზე მანიპულირებისთვის."
