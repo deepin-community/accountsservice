@@ -35,13 +35,14 @@
 #include <glib-unix.h>
 
 #include "daemon.h"
+#include "util.h"
 
 #define NAME_TO_CLAIM "org.freedesktop.Accounts"
 
 static gboolean
-ensure_directory (const char  *path,
-                  gint         mode,
-                  GError     **error)
+ensure_directory (const char *path,
+                  gint        mode,
+                  GError    **error)
 {
         GStatBuf stat_buffer = { 0 };
 
@@ -80,9 +81,9 @@ ensure_directory (const char  *path,
 }
 
 static gboolean
-ensure_file_permissions (const char  *dir_path,
-                         gint         file_mode,
-                         GError     **error)
+ensure_file_permissions (const char *dir_path,
+                         gint        file_mode,
+                         GError    **error)
 {
         GDir *dir = NULL;
         const gchar *filename;
@@ -125,17 +126,18 @@ ensure_file_permissions (const char  *dir_path,
 }
 
 static void
-on_bus_acquired (GDBusConnection  *connection,
-                 const gchar      *name,
-                 gpointer          user_data)
+on_bus_acquired (GDBusConnection *connection,
+                 const gchar     *name,
+                 gpointer         user_data)
 {
         GMainLoop *loop = user_data;
         Daemon *daemon;
-        g_autoptr(GError) error = NULL;
 
-        if (!ensure_directory (ICONDIR, 0775, &error) ||
-            !ensure_directory (USERDIR, 0700, &error) ||
-            !ensure_file_permissions (USERDIR, 0600, &error)) {
+        g_autoptr (GError) error = NULL;
+
+        if (!ensure_directory (get_icondir (), 0775, &error) ||
+            !ensure_directory (get_userdir (), 0700, &error) ||
+            !ensure_file_permissions (get_userdir (), 0600, &error)) {
                 g_printerr ("%s\n", error->message);
                 g_main_loop_quit (loop);
                 return;
@@ -154,9 +156,9 @@ on_bus_acquired (GDBusConnection  *connection,
 }
 
 static void
-on_name_lost (GDBusConnection  *connection,
-              const gchar      *name,
-              gpointer          user_data)
+on_name_lost (GDBusConnection *connection,
+              const gchar     *name,
+              gpointer         user_data)
 {
         GMainLoop *loop = user_data;
 
@@ -167,12 +169,12 @@ on_name_lost (GDBusConnection  *connection,
 static gboolean debug;
 
 static void
-on_log_debug (const gchar *log_domain,
+on_log_debug (const gchar   *log_domain,
               GLogLevelFlags log_level,
-              const gchar *message,
-              gpointer user_data)
+              const gchar   *message,
+              gpointer       user_data)
 {
-        g_autoptr(GString) string = NULL;
+        g_autoptr (GString) string = NULL;
         const gchar *progname;
         int ret G_GNUC_UNUSED;
 
@@ -180,7 +182,7 @@ on_log_debug (const gchar *log_domain,
 
         progname = g_get_prgname ();
         g_string_append_printf (string, "(%s:%lu): %s%sDEBUG: %s\n",
-                                progname ? progname : "process", (gulong)getpid (),
+                                progname ? progname : "process", (gulong) getpid (),
                                 log_domain ? log_domain : "", log_domain ? "-" : "",
                                 message ? message : "(NULL) message");
 
@@ -210,18 +212,19 @@ on_signal_quit (gpointer data)
 }
 
 int
-main (int argc, char *argv[])
+main (int   argc,
+      char *argv[])
 {
-        g_autoptr(GMainLoop) loop = NULL;
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GMainLoop) loop = NULL;
+        g_autoptr (GError) error = NULL;
         GBusNameOwnerFlags flags;
-        g_autoptr(GOptionContext) context = NULL;
+        g_autoptr (GOptionContext) context = NULL;
         static gboolean replace;
         static gboolean show_version;
         static GOptionEntry entries[] = {
-                { "version", 0, 0, G_OPTION_ARG_NONE, &show_version, N_("Output version information and exit"), NULL },
-                { "replace", 0, 0, G_OPTION_ARG_NONE, &replace, N_("Replace existing instance"), NULL },
-                { "debug", 0, 0, G_OPTION_ARG_NONE, &debug, N_("Enable debugging code"), NULL },
+                { "version", 0, 0, G_OPTION_ARG_NONE, &show_version, N_ ("Output version information and exit"), NULL },
+                { "replace", 0, 0, G_OPTION_ARG_NONE, &replace,      N_ ("Replace existing instance"),           NULL },
+                { "debug",   0, 0, G_OPTION_ARG_NONE, &debug,        N_ ("Enable debugging code"),               NULL },
 
                 { NULL }
         };
@@ -240,7 +243,7 @@ main (int argc, char *argv[])
 
         context = g_option_context_new (NULL);
         g_option_context_set_translation_domain (context, GETTEXT_PACKAGE);
-        g_option_context_set_summary (context, _("Provides D-Bus interfaces for querying and manipulating\nuser account information."));
+        g_option_context_set_summary (context, _ ("Provides D-Bus interfaces for querying and manipulating\nuser account information."));
         g_option_context_add_main_entries (context, entries, NULL);
         if (!g_option_context_parse (context, &argc, &argv, &error)) {
                 g_warning ("%s", error->message);
@@ -256,6 +259,8 @@ main (int argc, char *argv[])
         if (debug && !g_getenv ("G_MESSAGES_DEBUG"))
                 g_log_set_handler (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, on_log_debug, NULL);
         g_log_set_default_handler (log_handler, NULL);
+
+        init_dirs ();
 
         loop = g_main_loop_new (NULL, FALSE);
 
@@ -279,6 +284,7 @@ main (int argc, char *argv[])
 
         g_debug ("exiting");
 
+        free_dirs ();
+
         return EXIT_SUCCESS;
 }
-

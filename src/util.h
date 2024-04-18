@@ -19,31 +19,36 @@
  * Written by: Matthias Clasen <mclasen@redhat.com>
  */
 
-#ifndef __UTIL_H__
-#define __UTIL_H__
+#pragma once
 
 #include <glib.h>
 
-G_BEGIN_DECLS
-
 void sys_log (GDBusMethodInvocation *context,
               const gchar           *format,
-                                     ...);
+              ...) G_GNUC_PRINTF (2, 3);
 
-gboolean get_caller_uid (GDBusMethodInvocation *context, gint *uid);
+gboolean get_caller_uid (GDBusMethodInvocation *context,
+                         gint                  *uid);
 
-gboolean spawn_with_login_uid (GDBusMethodInvocation  *context,
-                               const gchar            *argv[],
-                               GError                **error);
+gboolean spawn_sync (const gchar *argv[],
+                     GError     **error);
 
 gboolean get_admin_groups (gid_t  *admin_gid_out,
                            gid_t **groups_out,
                            gsize  *n_groups_out);
 
-gint get_user_groups (const gchar  *username,
-                      gid_t         group,
-                      gid_t       **groups);
+gint get_user_groups (const gchar *username,
+                      gid_t        group,
+                      gid_t      **groups);
 
-G_END_DECLS
+gboolean verify_xpg_locale (const char *locale);
+gboolean verify_locale (const char *locale);
 
-#endif /* __UTIL_H__ */
+void init_dirs (void);
+void free_dirs (void);
+const char *get_userdir (void);
+const char *get_sysconfdir (void);
+const char *get_icondir (void);
+
+gboolean compat_check_exit_status (int      estatus,
+                                   GError **error);

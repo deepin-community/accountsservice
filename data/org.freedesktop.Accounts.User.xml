@@ -16,7 +16,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users username. Note that it is usually not allowed
+          Sets the userʼs username. Note that it is usually not allowed
           to have multiple users with the same username.
         </doc:para>
       </doc:description>
@@ -48,7 +48,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users real name.
+          Sets the userʼs real name.
         </doc:para>
       </doc:description>
       <doc:permission>
@@ -56,7 +56,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own name</doc:definition>
+            <doc:definition>To change their own name</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
@@ -83,7 +83,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users email address.
+          Sets the userʼs email address.
         </doc:para>
         <doc:para>
           Note that setting an email address in the AccountsService is
@@ -96,7 +96,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own email address</doc:definition>
+            <doc:definition>To change their own email address</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
@@ -123,11 +123,11 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users language.
+          Sets the user's language.
         </doc:para>
         <doc:para>
           The expectation is that display managers will start the
-          users session with this locale.
+          userʼs session with this locale.
         </doc:para>
       </doc:description>
       <doc:permission>
@@ -135,11 +135,52 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own language</doc:definition>
+            <doc:definition>To change their own language</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
             <doc:definition>To change the language of another user</doc:definition>
+          </doc:item>
+        </doc:list>
+      </doc:permission>
+      <doc:errors>
+        <doc:error name="org.freedesktop.Accounts.Error.PermissionDenied">if the caller lacks the appropriate PolicyKit authorization</doc:error>
+        <doc:error name="org.freedesktop.Accounts.Error.Failed">if the operation failed</doc:error>
+      </doc:errors>
+    </doc:doc>
+  </method>
+
+  <method name="SetLanguages">
+    <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+    <arg name="languages" direction="in" type="as">
+      <doc:doc>
+        <doc:summary>
+          The user's preferred languages, as an array of locale specification like "de_DE.UTF-8".
+        </doc:summary>
+      </doc:doc>
+    </arg>
+    <doc:doc>
+      <doc:description>
+        <doc:para>
+          Sets the userʼs preferred languages. The first item in the list will
+          be used to set the Language property.
+        </doc:para>
+        <doc:para>
+          The expectation is that package installers will use
+          this to know which languages the user is interested in, so as
+          to install extra data, like translations, dictionaries, etc.
+        </doc:para>
+      </doc:description>
+      <doc:permission>
+        The caller needs one of the following PolicyKit authorizations:
+        <doc:list>
+          <doc:item>
+            <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
+            <doc:definition>To change their own preferred languages</doc:definition>
+          </doc:item>
+          <doc:item>
+            <doc:term>org.freedesktop.accounts.user-administration</doc:term>
+            <doc:definition>To change the preferred languages of another user</doc:definition>
           </doc:item>
         </doc:list>
       </doc:permission>
@@ -163,7 +204,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users x session.
+          Sets the userʼs x session.
         </doc:para>
         <doc:para>
           The expectation is that display managers will log the user in to this
@@ -178,7 +219,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own language</doc:definition>
+            <doc:definition>To change their own language</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
@@ -206,7 +247,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users wayland or x session.
+          Sets the userʼs wayland or x session.
         </doc:para>
         <doc:para>
           The expectation is that display managers will log the user in to this
@@ -218,7 +259,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own language</doc:definition>
+            <doc:definition>To change their own language</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
@@ -246,7 +287,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the session type of the users session.
+          Sets the session type of the userʼs session.
         </doc:para>
         <doc:para>
           Display managers may use this property to decide what type of display server to use when
@@ -258,7 +299,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own language</doc:definition>
+            <doc:definition>To change their own language</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
@@ -285,7 +326,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users location.
+          Sets the userʼs location.
         </doc:para>
       </doc:description>
       <doc:permission>
@@ -293,7 +334,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own location</doc:definition>
+            <doc:definition>To change their own location</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
@@ -320,10 +361,10 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users home directory.
+          Sets the userʼs home directory.
         </doc:para>
         <doc:para>
-          Note that changing the users home directory moves all the content
+          Note that changing the userʼs home directory moves all the content
           from the old location to the new one, and is potentially an
           expensive operation.
         </doc:para>
@@ -356,7 +397,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users shell.
+          Sets the userʼs shell.
         </doc:para>
         <doc:para>
           Note that setting the shell to a non-allowed program may
@@ -384,14 +425,14 @@
     <arg name="filename" direction="in" type="s">
       <doc:doc>
         <doc:summary>
-          The absolute filename of a png file to use as the users icon.
+          The absolute filename of a png file to use as the userʼs icon.
         </doc:summary>
       </doc:doc>
     </arg>
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users icon.
+          Sets the userʼs icon.
         </doc:para>
       </doc:description>
       <doc:permission>
@@ -399,7 +440,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own icon</doc:definition>
+            <doc:definition>To change their own icon</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
@@ -419,14 +460,14 @@
     <arg name="locked" direction="in" type="b">
       <doc:doc>
         <doc:summary>
-          Whether to lock or unlock the users account.
+          Whether to lock or unlock the userʼs account.
         </doc:summary>
       </doc:doc>
     </arg>
     <doc:doc>
       <doc:description>
         <doc:para>
-          Locks or unlocks a users account.
+          Locks or unlocks a userʼs account.
         </doc:para>
         <doc:para>
           Locking an account prevents the user from logging in.
@@ -470,7 +511,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Changes the users account type.
+          Changes the userʼs account type.
         </doc:para>
       </doc:description>
       <doc:permission>
@@ -515,7 +556,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Changes the users password mode.
+          Changes the userʼs password mode.
         </doc:para>
         <doc:para>
           Note that changing the password mode has the side-effect of
@@ -527,7 +568,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
-            <doc:definition>To change a users password mode</doc:definition>
+            <doc:definition>To change a userʼs password mode</doc:definition>
           </doc:item>
         </doc:list>
       </doc:permission>
@@ -592,7 +633,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          Sets the users password hint.
+          Sets the userʼs password hint.
         </doc:para>
       </doc:description>
       <doc:permission>
@@ -600,7 +641,7 @@
         <doc:list>
           <doc:item>
             <doc:term>org.freedesktop.accounts.change-own-user-data</doc:term>
-            <doc:definition>To change his own language</doc:definition>
+            <doc:definition>To change their own language</doc:definition>
           </doc:item>
           <doc:item>
             <doc:term>org.freedesktop.accounts.user-administration</doc:term>
@@ -698,7 +739,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          The users real name.
+          The userʼs real name.
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -708,7 +749,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          The users account type, encoded as an integer:
+          The userʼs account type, encoded as an integer:
           <doc:list>
             <doc:item>
               <doc:term>0</doc:term>
@@ -728,7 +769,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          The users home directory.
+          The userʼs home directory.
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -738,7 +779,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          The users shell.
+          The userʼs shell.
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -758,7 +799,17 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          The users language, as a locale specification like "de_DE.UTF-8".
+          The user's main language, as a locale specification like "de_DE.UTF-8".
+        </doc:para>
+      </doc:description>
+    </doc:doc>
+  </property>
+
+  <property name="Languages" type="as" access="read">
+    <doc:doc>
+      <doc:description>
+        <doc:para>
+          The user's other preferred languages, as a locale specification like "de_DE.UTF-8".
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -768,7 +819,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          The users Wayland or X session.
+          The userʼs Wayland or X session.
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -788,7 +839,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          The users x session.
+          The userʼs x session.
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -798,7 +849,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-          The users location.
+          The userʼs location.
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -846,7 +897,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-           The filename of a png file containing the users icon.
+           The filename of a png file containing the userʼs icon.
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -856,7 +907,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-           Whether the users account has retained state
+           Whether the userʼs account has retained state
         </doc:para>
       </doc:description>
     </doc:doc>
@@ -866,7 +917,7 @@
     <doc:doc>
       <doc:description>
         <doc:para>
-           Whether the users account is locked.
+           Whether the userʼs account is locked.
         </doc:para>
       </doc:description>
     </doc:doc>

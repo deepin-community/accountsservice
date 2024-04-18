@@ -41,7 +41,8 @@ get_cmdline_of_pid (GPid pid)
         g_autofree gchar *filename = NULL;
         g_autofree gchar *contents = NULL;
         gsize contents_len;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         guint n;
 
         filename = g_strdup_printf ("/proc/%d/cmdline", (int) pid);
@@ -70,8 +71,8 @@ static gboolean
 get_caller_pid (GDBusMethodInvocation *context,
                 GPid                  *pid)
 {
-        g_autoptr(GVariant) reply = NULL;
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GVariant) reply = NULL;
+        g_autoptr (GError) error = NULL;
         guint32 pid_as_int;
 
         reply = g_dbus_connection_call_sync (g_dbus_method_invocation_get_connection (context),
@@ -103,7 +104,7 @@ get_caller_pid (GDBusMethodInvocation *context,
 void
 sys_log (GDBusMethodInvocation *context,
          const gchar           *format,
-                                ...)
+         ...)
 {
         va_list args;
         g_autofree gchar *msg = NULL;
@@ -155,37 +156,11 @@ sys_log (GDBusMethodInvocation *context,
         syslog (LOG_NOTICE, "%s", msg);
 }
 
-static void
-get_caller_loginuid (GDBusMethodInvocation *context, gchar *loginuid, gint size)
-{
-        GPid pid;
-        g_autofree gchar *path = NULL;
-        g_autofree gchar *buf = NULL;
-
-        if (get_caller_pid (context, &pid)) {
-                path = g_strdup_printf ("/proc/%d/loginuid", (int) pid);
-        } else {
-                path = NULL;
-        }
-
-        if (path != NULL && g_file_get_contents (path, &buf, NULL, NULL)) {
-                strncpy (loginuid, buf, size);
-        }
-        else {
-                gint uid;
-
-                if (!get_caller_uid (context, &uid)) {
-                        uid = getuid ();
-                }
-                g_snprintf (loginuid, size, "%d", uid);
-        }
-}
-
-static gboolean
+gboolean
 compat_check_exit_status (int      estatus,
                           GError **error)
 {
-#if GLIB_CHECK_VERSION(2, 33, 12)
+#if GLIB_CHECK_VERSION (2, 33, 12)
         return g_spawn_check_exit_status (estatus, error);
 #else
         if (!WIFEXITED (estatus)) {
@@ -200,49 +175,34 @@ compat_check_exit_status (int      estatus,
                              G_SPAWN_ERROR,
                              G_SPAWN_ERROR_FAILED,
                              "Exited with code %d",
-                             WEXITSTATUS(estatus));
+                             WEXITSTATUS (estatus));
                 return FALSE;
         }
         return TRUE;
 #endif
 }
 
-static void
-setup_loginuid (gpointer data)
-{
-        const char *id = data;
-        int fd;
-
-        fd = open ("/proc/self/loginuid", O_WRONLY);
-        write (fd, id, strlen (id));
-        close (fd);
-}
-
 gboolean
-spawn_with_login_uid (GDBusMethodInvocation  *context,
-                      const gchar            *argv[],
-                      GError                **error)
+spawn_sync (const gchar *argv[],
+            GError     **error)
 {
         gboolean ret = FALSE;
-        gchar loginuid[20];
         gint status;
 
-        get_caller_loginuid (context, loginuid, G_N_ELEMENTS (loginuid));
-
-        if (!g_spawn_sync (NULL, (gchar**)argv, NULL, 0, setup_loginuid, loginuid, NULL, NULL, &status, error))
+        if (!g_spawn_sync (NULL, (gchar **) argv, NULL, 0, NULL, NULL, NULL, NULL, &status, error))
                 goto out;
         if (!compat_check_exit_status (status, error))
                 goto out;
 
         ret = TRUE;
- out:
+out:
         return ret;
 }
 
 gint
-get_user_groups (const gchar  *user,
-                 gid_t         group,
-                 gid_t       **groups)
+get_user_groups (const gchar *user,
+                 gid_t        group,
+                 gid_t      **groups)
 {
         gint res;
         gint ngroups;
@@ -280,7 +240,7 @@ get_admin_groups (gid_t  *admin_gid_out,
                   gid_t **groups_out,
                   gsize  *n_groups_out)
 {
-        g_auto(GStrv) extra_admin_groups = NULL;
+        g_auto (GStrv) extra_admin_groups = NULL;
         g_autofree gid_t *extra_admin_groups_gids = NULL;
         gsize n_extra_admin_groups_gids = 0;
         gsize i;
@@ -333,8 +293,8 @@ gboolean
 get_caller_uid (GDBusMethodInvocation *context,
                 gint                  *uid)
 {
-        g_autoptr(GVariant) reply = NULL;
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GVariant) reply = NULL;
+        g_autoptr (GError) error = NULL;
 
         reply = g_dbus_connection_call_sync (g_dbus_method_invocation_get_connection (context),
                                              "org.freedesktop.DBus",
@@ -359,4 +319,129 @@ get_caller_uid (GDBusMethodInvocation *context,
         g_variant_get (reply, "(u)", uid);
 
         return TRUE;
+}
+
+/* Mask for components of locale spec. The ordering here is from
+ * least significant to most significant
+ */
+enum
+{
+        COMPONENT_CODESET   =   1 << 0,
+        COMPONENT_TERRITORY = 1 << 1,
+        COMPONENT_MODIFIER  =  1 << 2,
+        COMPONENT_LANGUAGE  =  1 << 3,
+};
+
+/* Returns TRUE if value was non-empty */
+
+static gboolean
+match_info_fetch_named_non_empty (GMatchInfo *match_info,
+                                  const char *match_name,
+                                  char      **variable)
+{
+        g_autofree char *value = NULL;
+
+        value = g_match_info_fetch_named (match_info, match_name);
+        if (!value || *value == '\0')
+                return FALSE;
+        if (variable)
+                *variable = g_steal_pointer (&value);
+        return TRUE;
+}
+
+static guint
+explode_locale (const gchar *locale,
+                gchar      **language,
+                gchar      **territory,
+                gchar      **codeset,
+                gchar      **modifier)
+{
+        g_autoptr (GRegex) regex = NULL;
+        g_autoptr (GMatchInfo) match_info = NULL;
+        guint mask = 0;
+
+        if (locale == NULL)
+                return mask;
+
+        regex = g_regex_new ("^(?P<language>[a-z][a-z][a-z]?)"
+                             "(_(?P<territory>[A-Z][A-Z]))?"
+                             "(\\.(?P<codeset>[A-Za-z0-9][A-Za-z-0-9]*))?"
+                             "(@(?P<modifier>[a-z]*))?$",
+                             0, 0, NULL);
+        g_assert (regex);
+
+        if (!g_regex_match (regex, locale, 0, &match_info))
+                return mask;
+
+        if (match_info_fetch_named_non_empty (match_info, "language", language))
+                mask |= COMPONENT_LANGUAGE;
+        if (match_info_fetch_named_non_empty (match_info, "territory", territory))
+                mask |= COMPONENT_TERRITORY;
+        if (match_info_fetch_named_non_empty (match_info, "codeset", codeset))
+                mask |= COMPONENT_CODESET;
+        if (match_info_fetch_named_non_empty (match_info, "modifier", modifier))
+                mask |= COMPONENT_MODIFIER;
+
+        return mask;
+}
+
+gboolean
+verify_xpg_locale (const char *locale)
+{
+        return explode_locale (locale, NULL, NULL, NULL, NULL) & COMPONENT_LANGUAGE;
+}
+
+gboolean
+verify_locale (const char *locale)
+{
+        if (locale && *locale == '\0')
+                return TRUE;
+        return verify_xpg_locale (locale);
+}
+
+static char *userdir = NULL;
+static char *sysconfdir = NULL;
+static char *icondir = NULL;
+
+void
+init_dirs (void)
+{
+        if (getuid () != 0 &&
+            geteuid () != 0 &&
+            g_getenv ("ROOTDIR") != NULL) {
+                userdir = g_build_filename (g_getenv ("ROOTDIR"), USERDIR, NULL);
+                icondir = g_build_filename (g_getenv ("ROOTDIR"), ICONDIR, NULL);
+                sysconfdir = g_build_filename (g_getenv ("ROOTDIR"), "etc", NULL);
+                return;
+        }
+
+        userdir = g_strdup (USERDIR);
+        icondir = g_strdup (ICONDIR);
+        sysconfdir = g_strdup ("/etc/");
+}
+
+void
+free_dirs (void)
+{
+        g_free (userdir);
+        g_free (icondir);
+        g_free (sysconfdir);
+}
+
+const char *
+get_userdir (void)
+{
+        return userdir;
+}
+
+const char *
+get_sysconfdir (void)
+{
+        return sysconfdir;
+}
+
+const char *
+get_icondir (void)
+{
+        return icondir;
 }

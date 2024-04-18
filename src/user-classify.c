@@ -51,6 +51,7 @@ static const char *default_excludes[] = {
         "man",
         "at",
         "gdm",
+        "lightdm",
         "gnome-initial-setup",
         "git"
 };
@@ -115,8 +116,7 @@ is_invalid_shell (const char *shell)
 gboolean
 user_classify_is_human (uid_t        uid,
                         const gchar *username,
-                        const gchar *shell,
-                        const gchar *password_hash)
+                        const gchar *shell)
 {
         if (user_classify_is_blacklisted (username))
                 return FALSE;

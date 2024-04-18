@@ -22,6 +22,7 @@
 
 #include "config.h"
 
+#include <locale.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -51,43 +52,68 @@
 #include "user.h"
 #include "accounts-user-generated.h"
 
-#define PATH_PASSWD "/etc/passwd"
-#define PATH_SHADOW "/etc/shadow"
+#define PATH_PASSWD "passwd"
+#define PATH_SHADOW "shadow"
 #define PATH_GROUP "/etc/group"
+#define PATH_DM     "/etc/systemd/system/display-manager.service"
 
-enum {
+enum
+{
         PROP_0,
         PROP_DAEMON_VERSION
 };
 
-typedef struct {
+typedef enum
+{
+        DISPLAY_MANAGER_TYPE_NONE = -1,
+        DISPLAY_MANAGER_TYPE_GDM,
+        DISPLAY_MANAGER_TYPE_LIGHTDM
+} DisplayManagerType;
+
+typedef enum
+{
+        USER_RELOAD_TYPE_NONE = 0,
+        USER_RELOAD_TYPE_IMMEDIATELY,
+        USER_RELOAD_TYPE_SOON,
+        USER_RELOAD_TYPE_EVENTUALLY
+} UserReloadType;
+
+typedef struct
+{
         GDBusConnection *bus_connection;
 
-        GHashTable *users;
-        gsize number_of_normal_users;
-        GList *explicitly_requested_users;
+        GHashTable      *users;
+        gsize            number_of_normal_users;
+        GList           *explicitly_requested_users;
 
-        User *autologin;
+        User            *autologin;
 
-        GFileMonitor *passwd_monitor;
-        GFileMonitor *shadow_monitor;
-        GFileMonitor *group_monitor;
-        GFileMonitor *gdm_monitor;
-        GFileMonitor *wtmp_monitor;
+        GFileMonitor    *passwd_monitor;
+        GFileMonitor    *shadow_monitor;
+        GFileMonitor    *group_monitor;
+        GFileMonitor    *dm_monitor;
+        GFileMonitor    *wtmp_monitor;
 
-        GQueue *pending_list_cached_users;
+        GQueue          *pending_list_cached_users;
 
-        guint reload_id;
-        guint autologin_id;
+        UserReloadType   reload_type;
+        guint            reload_id;
+
+        guint            autologin_id;
 
         PolkitAuthority *authority;
-        GHashTable *extension_ifaces;
+        GHashTable      *extension_ifaces;
 } DaemonPrivate;
 
-typedef struct passwd * (* EntryGeneratorFunc) (Daemon *, GHashTable *, gpointer *, struct spwd **shadow_entry);
+typedef struct passwd * (* EntryGeneratorFunc) (Daemon *,
+                                                GHashTable *,
+                                                GHashTable *,
+                                                gpointer *,
+                                                struct spwd **shadow_entry);
 
-typedef struct {
-        Daemon *daemon;
+typedef struct
+{
+        Daemon                *daemon;
         GDBusMethodInvocation *context;
 } ListUserData;
 
@@ -103,11 +129,11 @@ G_DEFINE_AUTOPTR_CLEANUP_FUNC (Daemon, g_object_unref)
 
 static const GDBusErrorEntry accounts_error_entries[] =
 {
-        { ERROR_FAILED, "org.freedesktop.Accounts.Error.Failed" },
-        { ERROR_USER_EXISTS, "org.freedesktop.Accounts.Error.UserExists" },
+        { ERROR_FAILED,              "org.freedesktop.Accounts.Error.Failed"           },
+        { ERROR_USER_EXISTS,         "org.freedesktop.Accounts.Error.UserExists"       },
         { ERROR_USER_DOES_NOT_EXIST, "org.freedesktop.Accounts.Error.UserDoesNotExist" },
-        { ERROR_PERMISSION_DENIED, "org.freedesktop.Accounts.Error.PermissionDenied" },
-        { ERROR_NOT_SUPPORTED, "org.freedesktop.Accounts.Error.NotSupported" }
+        { ERROR_PERMISSION_DENIED,   "org.freedesktop.Accounts.Error.PermissionDenied" },
+        { ERROR_NOT_SUPPORTED,       "org.freedesktop.Accounts.Error.NotSupported"     }
 };
 
 GQuark
@@ -127,23 +153,22 @@ error_quark (void)
 GType
 error_get_type (void)
 {
-  static GType etype = 0;
+        static GType etype = 0;
 
-  if (etype == 0)
-    {
-      static const GEnumValue values[] =
-        {
-          ENUM_ENTRY (ERROR_FAILED, "Failed"),
-          ENUM_ENTRY (ERROR_USER_EXISTS, "UserExists"),
-          ENUM_ENTRY (ERROR_USER_DOES_NOT_EXIST, "UserDoesntExist"),
-          ENUM_ENTRY (ERROR_PERMISSION_DENIED, "PermissionDenied"),
-          ENUM_ENTRY (ERROR_NOT_SUPPORTED, "NotSupported"),
-          { 0, 0, 0 }
-        };
-      g_assert (NUM_ERRORS == G_N_ELEMENTS (values) - 1);
-      etype = g_enum_register_static ("Error", values);
-    }
-  return etype;
+        if (etype == 0) {
+                static const GEnumValue values[] =
+                {
+                        ENUM_ENTRY (ERROR_FAILED,              "Failed"),
+                        ENUM_ENTRY (ERROR_USER_EXISTS,         "UserExists"),
+                        ENUM_ENTRY (ERROR_USER_DOES_NOT_EXIST, "UserDoesntExist"),
+                        ENUM_ENTRY (ERROR_PERMISSION_DENIED,   "PermissionDenied"),
+                        ENUM_ENTRY (ERROR_NOT_SUPPORTED,       "NotSupported"),
+                        { 0,                                   0,                  0}
+                };
+                g_assert (NUM_ERRORS == G_N_ELEMENTS (values) - 1);
+                etype = g_enum_register_static ("Error", values);
+        }
+        return etype;
 }
 
 #ifndef HAVE_FGETPWENT
@@ -154,46 +179,79 @@ error_get_type (void)
 #define MAX_LOCAL_USERS 50
 #endif
 
+/* Get current system Display Manager type */
+static DisplayManagerType
+get_current_system_dm_type (void)
+{
+        g_autofree gchar *link_target = NULL;
+        g_autofree gchar *basename = NULL;
+        GFile *file;
+
+        link_target = g_file_read_link (PATH_DM, NULL);
+        if (link_target) {
+                file = g_file_new_for_path (link_target);
+                basename = g_file_get_basename (file);
+                g_object_unref (file);
+
+                if (g_strcmp0 (basename, "lightdm.service") == 0)
+                        return DISPLAY_MANAGER_TYPE_LIGHTDM;
+                else if (g_strcmp0 (basename, "gdm.service") == 0)
+                        return DISPLAY_MANAGER_TYPE_GDM;
+        }
+
+        return DISPLAY_MANAGER_TYPE_NONE;
+}
+
 static void
 remove_cache_files (const gchar *user_name)
 {
         g_autofree gchar *user_filename = NULL;
         g_autofree gchar *icon_filename = NULL;
 
-        user_filename = g_build_filename (USERDIR, user_name, NULL);
+        user_filename = g_build_filename (get_userdir (), user_name, NULL);
         g_remove (user_filename);
 
-        icon_filename = g_build_filename (ICONDIR, user_name, NULL);
+        icon_filename = g_build_filename (get_icondir (), user_name, NULL);
         g_remove (icon_filename);
 }
 
 static struct passwd *
 entry_generator_fgetpwent (Daemon       *daemon,
                            GHashTable   *users,
+                           GHashTable   *local_users,
                            gpointer     *state,
                            struct spwd **spent)
 {
         struct passwd *pwent;
 
-        struct {
+        struct
+        {
                 struct spwd spbuf;
-                char buf[1024];
+                char        buf[1024];
         } *shadow_entry_buffers;
 
-        struct {
-                FILE *fp;
-                GHashTable *users;
+        struct
+        {
+                FILE       *fp;
+                /* Local user accounts (currently defined as existing in
+                 * /etc/shadow, so sites that rsync NIS/LDAP users into
+                 * /etc/passwd don't get them all treated as local)
+                 * username -> copy of shadow_entry_buffers */
+                GHashTable *shadow_users;
         } *generator_state;
 
         /* First iteration */
         if (*state == NULL) {
                 GHashTable *shadow_users = NULL;
+                g_autofree char *shadow_path = NULL;
+                g_autofree char *passwd_path = NULL;
                 FILE *fp;
                 struct spwd *shadow_entry;
 
-                fp = fopen (PATH_SHADOW, "r");
+                shadow_path = g_build_filename (get_sysconfdir (), PATH_SHADOW, NULL);
+                fp = fopen (shadow_path, "r");
                 if (fp == NULL) {
-                        g_warning ("Unable to open %s: %s", PATH_SHADOW, g_strerror (errno));
+                        g_warning ("Unable to open %s: %s", shadow_path, g_strerror (errno));
                         return NULL;
                 }
 
@@ -202,11 +260,12 @@ entry_generator_fgetpwent (Daemon       *daemon,
                 do {
                         int ret = 0;
 
-                        shadow_entry_buffers = g_malloc0 (sizeof (*shadow_entry_buffers));
+                        shadow_entry_buffers = g_malloc0 (sizeof(*shadow_entry_buffers));
 
-                        ret = fgetspent_r (fp, &shadow_entry_buffers->spbuf, shadow_entry_buffers->buf, sizeof (shadow_entry_buffers->buf), &shadow_entry);
+                        ret = fgetspent_r (fp, &shadow_entry_buffers->spbuf, shadow_entry_buffers->buf, sizeof(shadow_entry_buffers->buf), &shadow_entry);
                         if (ret == 0) {
                                 g_hash_table_insert (shadow_users, g_strdup (shadow_entry->sp_namp), shadow_entry_buffers);
+                                g_hash_table_add (local_users, g_strdup (shadow_entry->sp_namp));
                         } else {
                                 g_free (shadow_entry_buffers);
 
@@ -223,16 +282,17 @@ entry_generator_fgetpwent (Daemon       *daemon,
                         return NULL;
                 }
 
-                fp = fopen (PATH_PASSWD, "r");
+                passwd_path = g_build_filename (get_sysconfdir (), PATH_PASSWD, NULL);
+                fp = fopen (passwd_path, "r");
                 if (fp == NULL) {
                         g_clear_pointer (&shadow_users, g_hash_table_unref);
-                        g_warning ("Unable to open %s: %s", PATH_PASSWD, g_strerror (errno));
+                        g_warning ("Unable to open %s: %s", passwd_path, g_strerror (errno));
                         return NULL;
                 }
 
-                generator_state = g_malloc0 (sizeof (*generator_state));
+                generator_state = g_malloc0 (sizeof(*generator_state));
                 generator_state->fp = fp;
-                generator_state->users = shadow_users;
+                generator_state->shadow_users = shadow_users;
 
                 *state = generator_state;
         }
@@ -243,26 +303,25 @@ entry_generator_fgetpwent (Daemon       *daemon,
         if (g_hash_table_size (users) < MAX_LOCAL_USERS) {
                 pwent = fgetpwent (generator_state->fp);
                 if (pwent != NULL) {
-                        shadow_entry_buffers = g_hash_table_lookup (generator_state->users, pwent->pw_name);
+                        shadow_entry_buffers = g_hash_table_lookup (generator_state->shadow_users, pwent->pw_name);
 
                         if (shadow_entry_buffers != NULL) {
-                            *spent = &shadow_entry_buffers->spbuf;
+                                *spent = &shadow_entry_buffers->spbuf;
                         }
 
                         /* Skip system users... */
-                        if (!user_classify_is_human (pwent->pw_uid, pwent->pw_name, pwent->pw_shell, (*spent)? (*spent)->sp_pwdp : NULL)) {
+                        if (!user_classify_is_human (pwent->pw_uid, pwent->pw_name, pwent->pw_shell)) {
                                 g_debug ("skipping user: %s", pwent->pw_name);
 
-                                return entry_generator_fgetpwent (daemon, users, state, spent);
+                                return entry_generator_fgetpwent (daemon, users, local_users, state, spent);
                         }
 
                         return pwent;
                 }
         }
 
-        /* Last iteration */
         fclose (generator_state->fp);
-        g_hash_table_unref (generator_state->users);
+        g_hash_table_unref (generator_state->shadow_users);
         g_free (generator_state);
         *state = NULL;
 
@@ -272,11 +331,13 @@ entry_generator_fgetpwent (Daemon       *daemon,
 static struct passwd *
 entry_generator_cachedir (Daemon       *daemon,
                           GHashTable   *users,
+                          GHashTable   *local_users,
                           gpointer     *state,
                           struct spwd **shadow_entry)
 {
         struct passwd *pwent;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         gboolean regular;
         GHashTableIter iter;
         gpointer key, value;
@@ -284,10 +345,10 @@ entry_generator_cachedir (Daemon       *daemon,
 
         /* First iteration */
         if (*state == NULL) {
-                *state = g_dir_open (USERDIR, 0, &error);
+                *state = g_dir_open (get_userdir (), 0, &error);
                 if (error != NULL) {
                         if (!g_error_matches (error, G_FILE_ERROR, G_FILE_ERROR_NOENT))
-                                g_warning ("couldn't list user cache directory: %s", USERDIR);
+                                g_warning ("couldn't list user cache directory: %s", get_userdir ());
                         return NULL;
                 }
         }
@@ -308,7 +369,7 @@ entry_generator_cachedir (Daemon       *daemon,
                         break;
 
                 /* Only load files in this directory */
-                filename = g_build_filename (USERDIR, name, NULL);
+                filename = g_build_filename (get_userdir (), name, NULL);
                 regular = g_file_test (filename, G_FILE_TEST_IS_REGULAR);
 
                 if (regular) {
@@ -321,10 +382,9 @@ entry_generator_cachedir (Daemon       *daemon,
                         } else if (errno == 0) {
                                 g_debug ("user '%s' in cache dir but not present on system, removing", name);
                                 remove_cache_files (name);
-                        }
-                        else {
+                        } else {
                                 g_warning ("failed to check if user '%s' in cache dir is present on system: %s",
-                                  name, g_strerror (errno));
+                                           name, g_strerror (errno));
                         }
                 }
         }
@@ -338,6 +398,16 @@ entry_generator_cachedir (Daemon       *daemon,
                 User *user = value;
 
                 user_update_from_cache (user);
+
+                if (user_get_local_account_overridden (user)) {
+                        const char *username = user_get_user_name (user);
+
+                        if (user_get_local_account (user)) {
+                                g_hash_table_add (local_users, g_strdup (username));
+                        } else {
+                                g_hash_table_remove (local_users, username);
+                        }
+                }
         }
 
         *state = NULL;
@@ -347,6 +417,7 @@ entry_generator_cachedir (Daemon       *daemon,
 static struct passwd *
 entry_generator_requested_users (Daemon       *daemon,
                                  GHashTable   *users,
+                                 GHashTable   *local_users,
                                  gpointer     *state,
                                  struct spwd **shadow_entry)
 {
@@ -391,10 +462,11 @@ entry_generator_requested_users (Daemon       *daemon,
 }
 
 static void
-load_entries (Daemon             *daemon,
-              GHashTable         *users,
-              gboolean            explicitly_requested,
-              EntryGeneratorFunc  entry_generator)
+load_entries (Daemon            *daemon,
+              GHashTable        *users,
+              GHashTable        *local_users,
+              gboolean           explicitly_requested,
+              EntryGeneratorFunc entry_generator)
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
         gpointer generator_state = NULL;
@@ -406,7 +478,7 @@ load_entries (Daemon             *daemon,
 
         for (;;) {
                 spent = NULL;
-                pwent = entry_generator (daemon, users, &generator_state, &spent);
+                pwent = entry_generator (daemon, users, local_users, &generator_state, &spent);
                 if (pwent == NULL)
                         break;
 
@@ -451,6 +523,15 @@ create_users_hash_table (void)
                                       g_object_unref);
 }
 
+static GHashTable *
+create_local_users_hash_table (void)
+{
+        return g_hash_table_new_full (g_str_hash,
+                                      g_str_equal,
+                                      g_free,
+                                      NULL);
+}
+
 static void
 reload_users (Daemon *daemon)
 {
@@ -458,8 +539,8 @@ reload_users (Daemon *daemon)
         AccountsAccounts *accounts = ACCOUNTS_ACCOUNTS (daemon);
         gboolean had_no_users, has_no_users, had_multiple_users, has_multiple_users;
         GHashTable *users;
+        GHashTable *local_users = NULL;
         GHashTable *old_users;
-        GHashTable *local;
         GHashTableIter iter;
         gsize number_of_normal_users = 0;
         gpointer name, value;
@@ -467,24 +548,23 @@ reload_users (Daemon *daemon)
         /* Track the users that we saw during our (re)load */
         users = create_users_hash_table ();
 
+        /* Track which users are local */
+        local_users = create_local_users_hash_table ();
+
         /*
          * NOTE: As we load data from all the sources, notifies are
          * frozen in load_entries() and then thawed as we process
          * them below.
          */
 
-        /* Load the local users into our hash table */
-        load_entries (daemon, users, FALSE, entry_generator_fgetpwent);
-        local = g_hash_table_new (g_str_hash, g_str_equal);
-        g_hash_table_iter_init (&iter, users);
-        while (g_hash_table_iter_next (&iter, &name, NULL))
-                g_hash_table_add (local, name);
+        /* Load the local users into our hash tables */
+        load_entries (daemon, users, local_users, FALSE, entry_generator_fgetpwent);
 
         /* Now add/update users from other sources, possibly non-local */
-        load_entries (daemon, users, TRUE, entry_generator_cachedir);
+        load_entries (daemon, users, local_users, TRUE, entry_generator_cachedir);
 
         /* and add users to hash table that were explicitly requested  */
-        load_entries (daemon, users, TRUE, entry_generator_requested_users);
+        load_entries (daemon, users, local_users, TRUE, entry_generator_requested_users);
 
         wtmp_helper_update_login_frequencies (users);
 
@@ -494,9 +574,9 @@ reload_users (Daemon *daemon)
                 User *user = value;
                 if (!user_get_system_account (user))
                         number_of_normal_users++;
-                user_update_local_account_property (user, g_hash_table_lookup (local, name) != NULL);
+                user_update_local_account_property (user, g_hash_table_contains (local_users, name));
         }
-        g_hash_table_destroy (local);
+        g_clear_pointer (&local_users, g_hash_table_destroy);
 
         had_no_users = accounts_accounts_get_has_no_users (accounts);
         has_no_users = number_of_normal_users == 0;
@@ -555,6 +635,7 @@ reload_users_timeout (Daemon *daemon)
 
         reload_users (daemon);
         priv->reload_id = 0;
+        priv->reload_type = USER_RELOAD_TYPE_NONE;
 
         g_queue_foreach (priv->pending_list_cached_users,
                          (GFunc) finish_list_cached_users, NULL);
@@ -563,10 +644,10 @@ reload_users_timeout (Daemon *daemon)
         return FALSE;
 }
 
-static gboolean load_autologin (Daemon    *daemon,
-                                gchar    **name,
-                                gboolean  *enabled,
-                                GError   **error);
+static gboolean load_autologin (Daemon   *daemon,
+                                gchar   **name,
+                                gboolean *enabled,
+                                GError  **error);
 
 static gboolean
 reload_autologin_timeout (Daemon *daemon)
@@ -575,13 +656,14 @@ reload_autologin_timeout (Daemon *daemon)
         AccountsAccounts *accounts = ACCOUNTS_ACCOUNTS (daemon);
         gboolean enabled;
         g_autofree gchar *name = NULL;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         User *user = NULL;
 
         priv->autologin_id = 0;
 
         if (!load_autologin (daemon, &name, &enabled, &error)) {
-                g_debug ("failed to load gdms custom.conf: %s", error->message);
+                g_debug ("failed to load autologin conf file: %s", error->message);
                 return FALSE;
         }
 
@@ -605,8 +687,7 @@ reload_autologin_timeout (Daemon *daemon)
                         priv->autologin = g_object_ref (user);
                         g_signal_emit_by_name (priv->autologin, "changed", 0);
                 }
-        }
-        else {
+        } else {
                 g_debug ("automatic login is disabled");
                 accounts_accounts_set_automatic_login_users (accounts, NULL);
         }
@@ -615,9 +696,31 @@ reload_autologin_timeout (Daemon *daemon)
 }
 
 static void
+queue_reload_users_eventually (Daemon *daemon)
+{
+        DaemonPrivate *priv = daemon_get_instance_private (daemon);
+
+        if (priv->reload_id > 0) {
+                return;
+        }
+
+        /* we wait 10 seconds before reloading the users, so e.g. wtmp
+         * parsing doesn't hammer the cpu if the user is logging in
+         * and out in a continuous loop.
+         */
+        priv->reload_id = g_timeout_add_seconds (10, (GSourceFunc) reload_users_timeout, daemon);
+        priv->reload_type = USER_RELOAD_TYPE_EVENTUALLY;
+}
+
+static void
 queue_reload_users_soon (Daemon *daemon)
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
+
+        if (priv->reload_type > USER_RELOAD_TYPE_SOON) {
+                g_source_remove (priv->reload_id);
+                priv->reload_id = 0;
+        }
 
         if (priv->reload_id > 0) {
                 return;
@@ -626,7 +729,8 @@ queue_reload_users_soon (Daemon *daemon)
         /* we wait half a second or so in case /etc/passwd and
          * /etc/shadow are changed at the same time, or repeatedly.
          */
-        priv->reload_id = g_timeout_add (500, (GSourceFunc)reload_users_timeout, daemon);
+        priv->reload_id = g_timeout_add (500, (GSourceFunc) reload_users_timeout, daemon);
+        priv->reload_type = USER_RELOAD_TYPE_SOON;
 }
 
 static void
@@ -634,11 +738,17 @@ queue_reload_users (Daemon *daemon)
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
 
+        if (priv->reload_type > USER_RELOAD_TYPE_IMMEDIATELY) {
+                g_source_remove (priv->reload_id);
+                priv->reload_id = 0;
+        }
+
         if (priv->reload_id > 0) {
                 return;
         }
 
-        priv->reload_id = g_idle_add ((GSourceFunc)reload_users_timeout, daemon);
+        priv->reload_id = g_idle_add ((GSourceFunc) reload_users_timeout, daemon);
+        priv->reload_type = USER_RELOAD_TYPE_IMMEDIATELY;
 }
 
 static void
@@ -650,30 +760,36 @@ queue_reload_autologin (Daemon *daemon)
                 return;
         }
 
-        priv->autologin_id = g_idle_add ((GSourceFunc)reload_autologin_timeout, daemon);
+        priv->autologin_id = g_idle_add ((GSourceFunc) reload_autologin_timeout, daemon);
 }
 
 static void
-on_users_monitor_changed (GFileMonitor      *monitor,
-                          GFile             *file,
-                          GFile             *other_file,
-                          GFileMonitorEvent  event_type,
-                          Daemon            *daemon)
+on_users_monitor_changed (GFileMonitor     *monitor,
+                          GFile            *file,
+                          GFile            *other_file,
+                          GFileMonitorEvent event_type,
+                          Daemon           *daemon)
 {
+        DaemonPrivate *priv = daemon_get_instance_private (daemon);
+
         if (event_type != G_FILE_MONITOR_EVENT_CHANGED &&
             event_type != G_FILE_MONITOR_EVENT_CREATED) {
                 return;
         }
 
-        queue_reload_users_soon (daemon);
+        if (monitor == priv->wtmp_monitor) {
+                queue_reload_users_eventually (daemon);
+        } else {
+                queue_reload_users_soon (daemon);
+        }
 }
 
 static void
-on_gdm_monitor_changed (GFileMonitor      *monitor,
-                        GFile             *file,
-                        GFile             *other_file,
-                        GFileMonitorEvent  event_type,
-                        Daemon            *daemon)
+on_dm_monitor_changed (GFileMonitor     *monitor,
+                       GFile            *file,
+                       GFile            *other_file,
+                       GFileMonitorEvent event_type,
+                       Daemon           *daemon)
 {
         if (event_type != G_FILE_MONITOR_EVENT_CHANGED &&
             event_type != G_FILE_MONITOR_EVENT_CREATED) {
@@ -683,20 +799,20 @@ on_gdm_monitor_changed (GFileMonitor      *monitor,
         queue_reload_autologin (daemon);
 }
 
-typedef void FileChangeCallback (GFileMonitor      *monitor,
-                                 GFile             *file,
-                                 GFile             *other_file,
-                                 GFileMonitorEvent  event_type,
-                                 Daemon            *daemon);
+typedef void FileChangeCallback (GFileMonitor     *monitor,
+                                 GFile            *file,
+                                 GFile            *other_file,
+                                 GFileMonitorEvent event_type,
+                                 Daemon           *daemon);
 
 static GFileMonitor *
 setup_monitor (Daemon             *daemon,
                const gchar        *path,
                FileChangeCallback *callback)
 {
-        g_autoptr(GFile) file = NULL;
+        g_autoptr (GFile) file = NULL;
         GFileMonitor *monitor;
-        g_autoptr(GError) error = NULL;
+        g_autoptr (GError) error = NULL;
 
         if (!path) {
                 return NULL;
@@ -724,6 +840,10 @@ static void
 daemon_init (Daemon *daemon)
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
+        g_autofree char *shadow_path = NULL;
+        g_autofree char *passwd_path = NULL;
+        g_autofree char *dm_path = NULL;
+        DisplayManagerType dm_type;
 
         priv->extension_ifaces = daemon_read_extension_ifaces ();
 
@@ -731,11 +851,13 @@ daemon_init (Daemon *daemon)
 
         priv->pending_list_cached_users = g_queue_new ();
 
+        passwd_path = g_build_filename (get_sysconfdir (), PATH_PASSWD, NULL);
         priv->passwd_monitor = setup_monitor (daemon,
-                                              PATH_PASSWD,
+                                              passwd_path,
                                               on_users_monitor_changed);
+        shadow_path = g_build_filename (get_sysconfdir (), PATH_SHADOW, NULL);
         priv->shadow_monitor = setup_monitor (daemon,
-                                              PATH_SHADOW,
+                                              shadow_path,
                                               on_users_monitor_changed);
         priv->group_monitor = setup_monitor (daemon,
                                              PATH_GROUP,
@@ -745,9 +867,16 @@ daemon_init (Daemon *daemon)
                                             wtmp_helper_get_path_for_monitor (),
                                             on_users_monitor_changed);
 
-        priv->gdm_monitor = setup_monitor (daemon,
-                                           PATH_GDM_CUSTOM,
-                                           on_gdm_monitor_changed);
+        dm_type = get_current_system_dm_type ();
+        if (dm_type == DISPLAY_MANAGER_TYPE_LIGHTDM)
+                dm_path = g_strdup (PATH_LIGHTDM_CONF);
+        else if (dm_type == DISPLAY_MANAGER_TYPE_GDM)
+                dm_path = g_strdup (PATH_GDM_CUSTOM);
+
+        priv->dm_monitor = setup_monitor (daemon,
+                                          dm_path,
+                                          on_dm_monitor_changed);
+
         reload_users_timeout (daemon);
         queue_reload_autologin (daemon);
 }
@@ -782,7 +911,8 @@ static gboolean
 register_accounts_daemon (Daemon *daemon)
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
 
         priv->authority = polkit_authority_get_sync (NULL, &error);
         if (priv->authority == NULL) {
@@ -813,7 +943,7 @@ register_accounts_daemon (Daemon *daemon)
 Daemon *
 daemon_new (void)
 {
-        g_autoptr(Daemon) daemon = NULL;
+        g_autoptr (Daemon) daemon = NULL;
 
         daemon = DAEMON (g_object_new (TYPE_DAEMON, NULL));
 
@@ -823,6 +953,11 @@ daemon_new (void)
 
         return g_steal_pointer (&daemon);
 }
+
+static void throw_error (GDBusMethodInvocation *context,
+                         gint                   error_code,
+                         const gchar           *format,
+                         ...) G_GNUC_PRINTF (3, 4);
 
 static void
 throw_error (GDBusMethodInvocation *context,
@@ -871,7 +1006,7 @@ daemon_local_find_user_by_id (Daemon *daemon,
 
         pwent = getpwuid (uid);
         if (pwent == NULL) {
-                g_debug ("unable to lookup uid %d", (int)uid);
+                g_debug ("unable to lookup uid %d", (int) uid);
                 return NULL;
         }
 
@@ -921,6 +1056,7 @@ User *
 daemon_local_get_automatic_login_user (Daemon *daemon)
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
+
         return priv->autologin;
 }
 
@@ -929,16 +1065,15 @@ daemon_find_user_by_id (AccountsAccounts      *accounts,
                         GDBusMethodInvocation *context,
                         gint64                 uid)
 {
-        Daemon *daemon = (Daemon*)accounts;
+        Daemon *daemon = (Daemon *) accounts;
         User *user;
 
         user = daemon_local_find_user_by_id (daemon, uid);
 
         if (user) {
                 accounts_accounts_complete_find_user_by_id (NULL, context, user_get_object_path (user));
-        }
-        else {
-                throw_error (context, ERROR_FAILED, "Failed to look up user with uid %d.", (int)uid);
+        } else {
+                throw_error (context, ERROR_FAILED, "Failed to look up user with uid %d.", (int) uid);
         }
 
         return TRUE;
@@ -949,15 +1084,14 @@ daemon_find_user_by_name (AccountsAccounts      *accounts,
                           GDBusMethodInvocation *context,
                           const gchar           *name)
 {
-        Daemon *daemon = (Daemon*)accounts;
+        Daemon *daemon = (Daemon *) accounts;
         User *user;
 
         user = daemon_local_find_user_by_name (daemon, name);
 
         if (user) {
                 accounts_accounts_complete_find_user_by_name (NULL, context, user_get_object_path (user));
-        }
-        else {
+        } else {
                 throw_error (context, ERROR_FAILED, "Failed to look up user with name %s.", name);
         }
 
@@ -989,10 +1123,10 @@ static void
 finish_list_cached_users (ListUserData *data)
 {
         DaemonPrivate *priv = daemon_get_instance_private (data->daemon);
-        g_autoptr(GPtrArray) object_paths = NULL;
+
+        g_autoptr (GPtrArray) object_paths = NULL;
         GHashTableIter iter;
         gpointer key, value;
-        uid_t uid;
 
         object_paths = g_ptr_array_new ();
 
@@ -1000,6 +1134,7 @@ finish_list_cached_users (ListUserData *data)
         while (g_hash_table_iter_next (&iter, &key, &value)) {
                 const gchar *name = key;
                 User *user = value;
+                uid_t uid;
 
                 uid = user_get_uid (user);
 
@@ -1027,7 +1162,7 @@ static gboolean
 daemon_list_cached_users (AccountsAccounts      *accounts,
                           GDBusMethodInvocation *context)
 {
-        Daemon *daemon = (Daemon*)accounts;
+        Daemon *daemon = (Daemon *) accounts;
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
         ListUserData *data;
 
@@ -1036,18 +1171,98 @@ daemon_list_cached_users (AccountsAccounts      *accounts,
         if (priv->reload_id > 0) {
                 /* reload pending -- finish call in reload_users_timeout */
                 g_queue_push_tail (priv->pending_list_cached_users, data);
-        }
-        else {
+                queue_reload_users (daemon);
+        } else {
                 finish_list_cached_users (data);
         }
 
         return TRUE;
 }
 
+static int
+sort_languages (gconstpointer element_1,
+                gconstpointer element_2,
+                GHashTable   *language_frequency_map)
+{
+        const char *language_1 = *(const char **) element_1;
+        const char *language_2 = *(const char **) element_2;
+        int count_1, count_2;
+
+        count_1 = GPOINTER_TO_INT (g_hash_table_lookup (language_frequency_map, language_1));
+        count_2 = GPOINTER_TO_INT (g_hash_table_lookup (language_frequency_map, language_2));
+
+        if (count_2 == count_1) {
+                return strcmp (language_1, language_2);
+        }
+
+        return count_2 - count_1;
+}
+
+static gboolean
+daemon_get_users_languages (AccountsAccounts      *accounts,
+                            GDBusMethodInvocation *context)
+{
+        Daemon *daemon = (Daemon *) accounts;
+        DaemonPrivate *priv = daemon_get_instance_private (daemon);
+
+        g_autoptr (GHashTable) language_frequency_map = NULL;
+        GHashTableIter users_iter, language_frequency_map_iter;
+        gpointer key, value;
+
+        g_autoptr (GPtrArray) languages_array = NULL;
+        const char *system_locale;
+
+        language_frequency_map = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
+        system_locale = setlocale (LC_MESSAGES, NULL);
+
+        g_hash_table_insert (language_frequency_map, g_strdup (system_locale), 0);
+
+        g_hash_table_iter_init (&users_iter, priv->users);
+        while (g_hash_table_iter_next (&users_iter, &key, &value)) {
+                const char *name = key;
+                User *user = value;
+                const char * const *languages = NULL;
+                guint i;
+
+                if (user_get_system_account (user))
+                        continue;
+
+                languages = accounts_user_get_languages (ACCOUNTS_USER (user));
+                for (i = 0; languages != NULL && languages[i] != NULL; i++) {
+                        int count;
+                        const char *locale;
+
+                        if (languages[i][0] != '\0')
+                                locale = languages[i];
+                        else
+                                locale = system_locale;
+
+                        count = GPOINTER_TO_INT (g_hash_table_lookup (language_frequency_map, locale));
+                        count++;
+
+                        g_debug ("Adding lang '%s' for user %s to the list (count now %d)", locale, name, count);
+
+                        g_hash_table_insert (language_frequency_map, g_strdup (locale), GINT_TO_POINTER (count));
+                }
+        }
+
+        languages_array = g_ptr_array_new ();
+        g_hash_table_iter_init (&language_frequency_map_iter, language_frequency_map);
+        while (g_hash_table_iter_next (&language_frequency_map_iter, &key, &value)) {
+                g_ptr_array_add (languages_array, key);
+        }
+        g_ptr_array_sort_with_data (languages_array, (GCompareDataFunc) sort_languages, language_frequency_map);
+        g_ptr_array_add (languages_array, NULL);
+
+        accounts_accounts_complete_get_users_languages (accounts, context, (const char * const *) languages_array->pdata);
+        return TRUE;
+}
+
 static const gchar *
 daemon_get_daemon_version (AccountsAccounts *object)
 {
-    return VERSION;
+        return VERSION;
 }
 
 static void
@@ -1060,16 +1275,17 @@ cache_user (Daemon *daemon,
         /* Always use the canonical user name looked up */
         user_name = user_get_user_name (user);
 
-        filename = g_build_filename (USERDIR, user_name, NULL);
+        filename = g_build_filename (get_userdir (), user_name, NULL);
         if (!g_file_test (filename, G_FILE_TEST_EXISTS)) {
                 user_save (user);
         }
 }
 
-typedef struct {
+typedef struct
+{
         gchar *user_name;
         gchar *real_name;
-        gint account_type;
+        gint   account_type;
 } CreateUserData;
 
 static void
@@ -1091,7 +1307,8 @@ daemon_create_user_authorized_cb (Daemon                *daemon,
 {
         CreateUserData *cd = data;
         User *user;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         const gchar *argv[9];
         g_autofree gchar *admin_groups = NULL;
 
@@ -1107,13 +1324,13 @@ daemon_create_user_authorized_cb (Daemon                *daemon,
         argv[2] = "-c";
         argv[3] = cd->real_name;
         if (cd->account_type == ACCOUNT_TYPE_ADMINISTRATOR) {
-                g_auto(GStrv) admin_groups_array = NULL;
-                g_autoptr(GStrvBuilder) admin_groups_builder = g_strv_builder_new ();
+                g_auto (GStrv) admin_groups_array = NULL;
+                g_autoptr (GStrvBuilder) admin_groups_builder = g_strv_builder_new ();
 
                 g_strv_builder_add (admin_groups_builder, ADMIN_GROUP);
 
                 if (EXTRA_ADMIN_GROUPS != NULL && EXTRA_ADMIN_GROUPS[0] != '\0') {
-                        g_auto(GStrv) extra_admin_groups = NULL;
+                        g_auto (GStrv) extra_admin_groups = NULL;
                         extra_admin_groups = g_strsplit (EXTRA_ADMIN_GROUPS, ",", 0);
 
                         for (gsize i = 0; extra_admin_groups[i] != NULL; i++) {
@@ -1131,18 +1348,16 @@ daemon_create_user_authorized_cb (Daemon                *daemon,
                 argv[6] = "--";
                 argv[7] = cd->user_name;
                 argv[8] = NULL;
-        }
-        else if (cd->account_type == ACCOUNT_TYPE_STANDARD) {
+        } else if (cd->account_type == ACCOUNT_TYPE_STANDARD) {
                 argv[4] = "--";
                 argv[5] = cd->user_name;
                 argv[6] = NULL;
-        }
-        else {
+        } else {
                 throw_error (context, ERROR_FAILED, "Don't know how to add user of type %d", cd->account_type);
                 return;
         }
 
-        if (!spawn_with_login_uid (context, argv, &error)) {
+        if (!spawn_sync (argv, &error)) {
                 throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                 return;
         }
@@ -1163,7 +1378,7 @@ daemon_create_user (AccountsAccounts      *accounts,
                     const gchar           *real_name,
                     gint                   account_type)
 {
-        Daemon *daemon = (Daemon*)accounts;
+        Daemon *daemon = (Daemon *) accounts;
         CreateUserData *data;
 
         data = g_new0 (CreateUserData, 1);
@@ -1177,7 +1392,7 @@ daemon_create_user (AccountsAccounts      *accounts,
                                  daemon_create_user_authorized_cb,
                                  context,
                                  data,
-                                 (GDestroyNotify)create_data_free);
+                                 (GDestroyNotify) create_data_free);
 
         return TRUE;
 }
@@ -1189,7 +1404,7 @@ daemon_cache_user_authorized_cb (Daemon                *daemon,
                                  gpointer               data)
 {
         const gchar *user_name = data;
-        User        *user;
+        User *user;
 
         sys_log (context, "cache user '%s'", user_name);
 
@@ -1212,7 +1427,7 @@ daemon_cache_user (AccountsAccounts      *accounts,
                    GDBusMethodInvocation *context,
                    const gchar           *user_name)
 {
-        Daemon *daemon = (Daemon*)accounts;
+        Daemon *daemon = (Daemon *) accounts;
 
         /* Can't have a slash in the user name */
         if (strchr (user_name, '/') != NULL) {
@@ -1240,7 +1455,7 @@ daemon_uncache_user_authorized_cb (Daemon                *daemon,
                                    gpointer               data)
 {
         const gchar *user_name = data;
-        User        *user;
+        User *user;
 
         sys_log (context, "uncache user '%s'", user_name);
 
@@ -1269,7 +1484,7 @@ daemon_uncache_user (AccountsAccounts      *accounts,
                      GDBusMethodInvocation *context,
                      const gchar           *user_name)
 {
-        Daemon *daemon = (Daemon*)accounts;
+        Daemon *daemon = (Daemon *) accounts;
 
         daemon_local_check_auth (daemon,
                                  NULL,
@@ -1282,8 +1497,9 @@ daemon_uncache_user (AccountsAccounts      *accounts,
         return TRUE;
 }
 
-typedef struct {
-        uid_t uid;
+typedef struct
+{
+        uid_t    uid;
         gboolean remove_files;
 } DeleteUserData;
 
@@ -1296,7 +1512,8 @@ daemon_delete_user_authorized_cb (Daemon                *daemon,
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
         DeleteUserData *ud = data;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         struct passwd *pwent;
         const gchar *argv[6];
         const gchar *homedir;
@@ -1342,15 +1559,14 @@ daemon_delete_user_authorized_cb (Daemon                *daemon,
                 argv[3] = "--";
                 argv[4] = pwent->pw_name;
                 argv[5] = NULL;
-        }
-        else {
+        } else {
                 argv[1] = "-f";
                 argv[2] = "--";
                 argv[3] = pwent->pw_name;
                 argv[4] = NULL;
         }
 
-        if (!spawn_with_login_uid (context, argv, &error)) {
+        if (!spawn_sync (argv, &error)) {
                 throw_error (context, ERROR_FAILED, "running '%s' failed: %s", argv[0], error->message);
                 return;
         }
@@ -1365,16 +1581,16 @@ daemon_delete_user (AccountsAccounts      *accounts,
                     gint64                 uid,
                     gboolean               remove_files)
 {
-        Daemon *daemon = (Daemon*)accounts;
+        Daemon *daemon = (Daemon *) accounts;
         DeleteUserData *data;
 
-        if ((uid_t)uid == 0) {
+        if ((uid_t) uid == 0) {
                 throw_error (context, ERROR_FAILED, "Refuse to delete root user");
                 return TRUE;
         }
 
         data = g_new0 (DeleteUserData, 1);
-        data->uid = (uid_t)uid;
+        data->uid = (uid_t) uid;
         data->remove_files = remove_files;
 
         daemon_local_check_auth (daemon,
@@ -1383,18 +1599,19 @@ daemon_delete_user (AccountsAccounts      *accounts,
                                  daemon_delete_user_authorized_cb,
                                  context,
                                  data,
-                                 (GDestroyNotify)g_free);
+                                 (GDestroyNotify) g_free);
 
         return TRUE;
 }
 
-typedef struct {
-        Daemon *daemon;
-        User *user;
-        AuthorizedCallback authorized_cb;
+typedef struct
+{
+        Daemon                *daemon;
+        User                  *user;
+        AuthorizedCallback     authorized_cb;
         GDBusMethodInvocation *context;
-        gpointer data;
-        GDestroyNotify destroy_notify;
+        gpointer               data;
+        GDestroyNotify         destroy_notify;
 } CheckAuthData;
 
 static void
@@ -1418,21 +1635,19 @@ check_auth_cb (PolkitAuthority *authority,
 {
         CheckAuthData *cad = data;
         PolkitAuthorizationResult *result;
-        g_autoptr(GError) error = NULL;
+
+        g_autoptr (GError) error = NULL;
         gboolean is_authorized = FALSE;
 
         result = polkit_authority_check_authorization_finish (authority, res, &error);
         if (error) {
                 throw_error (cad->context, ERROR_PERMISSION_DENIED, "Not authorized: %s", error->message);
-        }
-        else {
+        } else {
                 if (polkit_authorization_result_get_is_authorized (result)) {
                         is_authorized = TRUE;
-                }
-                else if (polkit_authorization_result_get_is_challenge (result)) {
+                } else if (polkit_authorization_result_get_is_challenge (result)) {
                         throw_error (cad->context, ERROR_PERMISSION_DENIED, "Authentication is required");
-                }
-                else {
+                } else {
                         throw_error (cad->context, ERROR_PERMISSION_DENIED, "Not authorized");
                 }
 
@@ -1440,10 +1655,10 @@ check_auth_cb (PolkitAuthority *authority,
         }
 
         if (is_authorized) {
-                (* cad->authorized_cb) (cad->daemon,
-                                        cad->user,
-                                        cad->context,
-                                        cad->data);
+                (*cad->authorized_cb) (cad->daemon,
+                                       cad->user,
+                                       cad->context,
+                                       cad->data);
         }
 
         check_auth_data_free (data);
@@ -1452,18 +1667,18 @@ check_auth_cb (PolkitAuthority *authority,
 static gboolean
 get_allow_interaction (GDBusMethodInvocation *invocation)
 {
-    /* GLib 2.46 is when G_DBUS_MESSAGE_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION
-     * was first released.
-     */
-#if GLIB_CHECK_VERSION(2, 46, 0)
-    GDBusMessage *message = g_dbus_method_invocation_get_message (invocation);
-    GDBusMessageFlags message_flags = g_dbus_message_get_flags (message);
-    if (message_flags & G_DBUS_MESSAGE_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION)
-        return TRUE;
-    else
-        return FALSE;
+        /* GLib 2.46 is when G_DBUS_MESSAGE_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION
+         * was first released.
+         */
+#if GLIB_CHECK_VERSION (2, 46, 0)
+        GDBusMessage *message = g_dbus_method_invocation_get_message (invocation);
+        GDBusMessageFlags message_flags = g_dbus_message_get_flags (message);
+        if (message_flags & G_DBUS_MESSAGE_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION)
+                return TRUE;
+        else
+                return FALSE;
 #else
-    return TRUE;
+        return TRUE;
 #endif
 }
 
@@ -1508,13 +1723,13 @@ daemon_local_check_auth (Daemon                *daemon,
         g_object_unref (subject);
 }
 
-gboolean
-load_autologin (Daemon      *daemon,
-                gchar      **name,
-                gboolean    *enabled,
-                GError     **error)
+static gboolean
+load_autologin_gdm (Daemon   *daemon,
+                    gchar   **name,
+                    gboolean *enabled,
+                    GError  **error)
 {
-        g_autoptr(GKeyFile) keyfile = NULL;
+        g_autoptr (GKeyFile) keyfile = NULL;
         GError *local_error = NULL;
         g_autofree gchar *string = NULL;
 
@@ -1533,8 +1748,7 @@ load_autologin (Daemon      *daemon,
         }
         if (string != NULL && (g_ascii_strcasecmp (string, "true") == 0 || strcmp (string, "1") == 0)) {
                 *enabled = TRUE;
-        }
-        else {
+        } else {
                 *enabled = FALSE;
         }
 
@@ -1548,15 +1762,62 @@ load_autologin (Daemon      *daemon,
 }
 
 static gboolean
-save_autologin (Daemon      *daemon,
-                const gchar *name,
-                gboolean     enabled,
-                GError     **error)
+load_autologin_lightdm (Daemon   *daemon,
+                        gchar   **name,
+                        gboolean *enabled,
+                        GError  **error)
 {
-        g_autoptr(GKeyFile) keyfile = NULL;
+        g_autoptr (GKeyFile) keyfile = NULL;
+        GError *local_error = NULL;
+
+        keyfile = g_key_file_new ();
+        if (!g_key_file_load_from_file (keyfile,
+                                        PATH_LIGHTDM_CONF,
+                                        G_KEY_FILE_KEEP_COMMENTS,
+                                        error)) {
+                return FALSE;
+        }
+
+        *name = g_key_file_get_string (keyfile, "SeatDefaults", "autologin-user", &local_error);
+        if (local_error) {
+                g_propagate_error (error, local_error);
+                return FALSE;
+        }
+
+        *enabled = ((*name) && (*name)[0] != 0);
+
+        return TRUE;
+}
+
+gboolean
+load_autologin (Daemon   *daemon,
+                gchar   **name,
+                gboolean *enabled,
+                GError  **error)
+{
+        DisplayManagerType dm_type;
+
+        dm_type = get_current_system_dm_type ();
+        if (dm_type == DISPLAY_MANAGER_TYPE_LIGHTDM)
+                return load_autologin_lightdm (daemon, name, enabled, error);
+        else if (dm_type == DISPLAY_MANAGER_TYPE_GDM)
+                return load_autologin_gdm (daemon, name, enabled, error);
+
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, _ ("Unsupported Display Manager"));
+
+        return FALSE;
+}
+
+static gboolean
+save_autologin_gdm (Daemon      *daemon,
+                    const gchar *name,
+                    gboolean     enabled,
+                    GError     **error)
+{
+        g_autoptr (GKeyFile) keyfile = NULL;
         g_autofree gchar *data = NULL;
         gboolean result;
-        g_autoptr(GError) local_error = NULL;
+        g_autoptr (GError) local_error = NULL;
 
         keyfile = g_key_file_new ();
         if (!g_key_file_load_from_file (keyfile,
@@ -1579,11 +1840,59 @@ save_autologin (Daemon      *daemon,
         return result;
 }
 
+static gboolean
+save_autologin_lightdm (Daemon      *daemon,
+                        const gchar *name,
+                        gboolean     enabled,
+                        GError     **error)
+{
+        g_autoptr (GKeyFile) keyfile = NULL;
+        g_autofree gchar *data = NULL;
+        gboolean result;
+        g_autoptr (GError) local_error = NULL;
+
+        keyfile = g_key_file_new ();
+        if (!g_key_file_load_from_file (keyfile,
+                                        PATH_LIGHTDM_CONF,
+                                        G_KEY_FILE_KEEP_COMMENTS,
+                                        &local_error)) {
+                /* It's OK for lightdm.conf to not exist, we will make it */
+                if (!g_error_matches (local_error, G_FILE_ERROR, G_FILE_ERROR_NOENT)) {
+                        g_propagate_error (error, g_steal_pointer (&local_error));
+                        return FALSE;
+                }
+        }
+
+        g_key_file_set_string (keyfile, "SeatDefaults", "autologin-user", enabled ? name : "");
+
+        data = g_key_file_to_data (keyfile, NULL, NULL);
+        result = g_file_set_contents (PATH_LIGHTDM_CONF, data, -1, error);
+
+        return result;
+}
+
+static gboolean
+save_autologin (Daemon      *daemon,
+                const gchar *name,
+                gboolean     enabled,
+                GError     **error)
+{
+        DisplayManagerType dm_type;
+
+        dm_type = get_current_system_dm_type ();
+        if (dm_type == DISPLAY_MANAGER_TYPE_LIGHTDM)
+                return save_autologin_lightdm (daemon, name, enabled, error);
+        else if (dm_type == DISPLAY_MANAGER_TYPE_GDM)
+                return save_autologin_gdm (daemon, name, enabled, error);
+
+        return FALSE;
+}
+
 gboolean
-daemon_local_set_automatic_login (Daemon    *daemon,
-                                  User      *user,
-                                  gboolean   enabled,
-                                  GError   **error)
+daemon_local_set_automatic_login (Daemon  *daemon,
+                                  User    *user,
+                                  gboolean enabled,
+                                  GError **error)
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
 
@@ -1617,6 +1926,7 @@ GHashTable *
 daemon_get_extension_ifaces (Daemon *daemon)
 {
         DaemonPrivate *priv = daemon_get_instance_private (daemon);
+
         return priv->extension_ifaces;
 }
 
@@ -1676,6 +1986,7 @@ daemon_accounts_accounts_iface_init (AccountsAccountsIface *iface)
         iface->handle_find_user_by_id = daemon_find_user_by_id;
         iface->handle_find_user_by_name = daemon_find_user_by_name;
         iface->handle_list_cached_users = daemon_list_cached_users;
+        iface->handle_get_users_languages = daemon_get_users_languages;
         iface->get_daemon_version = daemon_get_daemon_version;
         iface->handle_cache_user = daemon_cache_user;
         iface->handle_uncache_user = daemon_uncache_user;
