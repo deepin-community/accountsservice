@@ -1,0 +1,25 @@
+commit b450a4420257fc9d01a6a842d14d3a4a7b32d77b
+Author: Marco Trevisan (Treviño) <mail@3v1n0.net>
+Date:   Tue Apr 18 19:45:48 2023 +0200
+
+    user-manager: Remove user from new users list if destroyed
+    
+    If an user gets destroyed early enough, while is still being loaded we
+    should also remove it from the list of new users or we'd try to
+    deference it at finalization time.
+    
+    Closes: #114
+
+Index: accountsservice/src/libaccountsservice/act-user-manager.c
+===================================================================
+--- accountsservice.orig/src/libaccountsservice/act-user-manager.c	2023-06-26 16:19:55.312085950 +0200
++++ accountsservice/src/libaccountsservice/act-user-manager.c	2023-06-26 16:19:55.308086001 +0200
+@@ -717,6 +717,8 @@
+         ActUserManagerPrivate *priv = act_user_manager_get_instance_private (manager);
+         GSList *node;
+ 
++        priv->new_users = g_slist_remove (priv->new_users, destroyed_user);
++
+         node = priv->fetch_user_requests;
+         while (node != NULL) {
+                 ActUserManagerFetchUserRequest *request;

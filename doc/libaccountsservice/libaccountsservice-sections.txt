@@ -41,6 +41,7 @@ act_user_set_automatic_login
 act_user_set_email
 act_user_set_icon_file
 act_user_set_language
+act_user_set_languages
 act_user_set_location
 act_user_set_locked
 act_user_set_password

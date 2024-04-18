@@ -40,8 +40,7 @@ def load(mock, parameters=None):
     mock.AddProperties(MAIN_IFACE, mock.GetAll(MAIN_IFACE))
 
     for uid, name in parameters.get('users', {}).items():
-        mock.AddUser(uid, name)
-
+        mock.AddUser(uid, name, DEFAULT_USER_PASSWORD, {}, {})
 
 def emit_properties_changed(mock, interface=MAIN_IFACE, properties=None):
     if properties is None:
@@ -80,6 +79,7 @@ def AddUser(self, uid, username, password=DEFAULT_USER_PASSWORD,
         'IconFile': '',
         'InputSources': dbus.Array([], signature='a{ss}'),
         'Language': 'C',
+        'Languages': dbus.Array([], signature='s'),
         'LocalAccount': True,
         'Location': '',
         'Locked': False,
@@ -171,7 +171,7 @@ def CreateUser(self, name, fullname, account_type):
     self.users_auto_uids += 1
 
     return self.AddUser(self.users_auto_uids, name, DEFAULT_USER_PASSWORD, {
-        'RealName': fullname, 'AccountType': account_type})
+        'RealName': fullname, 'AccountType': account_type}, {})
 
 
 @dbus.service.method(MAIN_IFACE, in_signature='xb')
@@ -296,6 +296,11 @@ def SetLanguage(self, language):
     set_user_property(self, 'Language', language)
 
 
+@dbus.service.method(USER_IFACE, in_signature='as')
+def SetLanguages(self, languages):
+    set_user_property(self, 'Languages', dbus.Array(languages, signature='s'))
+
+
 @dbus.service.method(USER_IFACE, in_signature='s')
 def SetXSession(self, x_session):
     set_user_property(self, 'XSession', x_session)
@@ -331,7 +336,7 @@ def SetIconFile(self, icon_file):
     set_user_property(self, 'IconFile', icon_file)
 
 
-@dbus.service.method(USER_IFACE, in_signature='s')
+@dbus.service.method(USER_IFACE, in_signature='b')
 def SetLocked(self, locked):
     set_user_property(self, 'Locked', locked)
 

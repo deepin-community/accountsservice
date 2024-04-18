@@ -187,6 +187,35 @@
       </doc:doc>
     </method>
 
+  <method name="GetUsersLanguages">
+    <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+    <arg name="languages" direction="out" type="as">
+      <doc:doc>
+        <doc:summary>
+          List users' preferred languages, as an array of locale specification like "de_DE.UTF-8".
+        </doc:summary>
+      </doc:doc>
+    </arg>
+    <doc:doc>
+      <doc:description>
+        <doc:para>
+          Lists all the languages set by all the users, sorted in order from most used to least used,
+          in XPG locale format.
+        </doc:para>
+        <doc:para>
+          Note that the languages are not parsed, and functional duplicates can occur (for instance,
+          en_GB and en_GB.UTF-8 may both end up in the list, even though they are the same).
+        </doc:para>
+        <doc:para>
+          The expectation is that package installers will use
+          this to know which languages users are interested in, so as
+          to install extra data, like translations, dictionaries, etc.
+          system-wide.
+        </doc:para>
+      </doc:description>
+    </doc:doc>
+  </method>
+
     <signal name="UserAdded">
       <arg name="user" type="o">
         <doc:doc><doc:summary>Object path of the user that was added.</doc:summary></doc:doc>
