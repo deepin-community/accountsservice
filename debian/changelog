@@ -1,3 +1,9 @@
+accountsservice (23.13.9-6deepin1) unstable; urgency=medium
+
+  * generate-version.sh: Do not guess version from git or tarball.
+
+ -- Tianyu Chen <sweetyfish@deepin.org>  Fri, 19 Apr 2024 02:20:55 +0800
+
 accountsservice (23.13.9-6) unstable; urgency=medium
 
   * Team upload
