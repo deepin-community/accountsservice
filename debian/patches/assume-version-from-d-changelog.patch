@@ -1,0 +1,18 @@
+--- a/generate-version.sh
++++ b/generate-version.sh
+@@ -7,6 +7,15 @@
+ TOPLEVEL_WORKING_DIR=$(realpath "$(git rev-parse --show-toplevel)")
+ exec 2>&3
+ 
++# Assume version from d/changelog
++if [ -f debian/changelog ] ; then
++    VERSION_FROM_DEBIAN_CHANGELOG=$(dpkg-parsechangelog -SVersion | sed -e 's/-[^-]*$$//' | sed -e 's/^[0-9]*://')
++    if [ -n "$VERSION_FROM_DEBIAN_CHANGELOG" ] ; then
++        echo "$VERSION_FROM_DEBIAN_CHANGELOG"
++        exit 0
++    fi
++fi
++
+ # If it's not from a git checkout, assume it's from a tarball
+ if [ "$TOPLEVEL_WORKING_DIR" != "$CWD" ]; then
+     VERSION_FROM_DIR_NAME=$(basename "$CWD" | sed -n 's/^accountsservice-\([^-]*\)$/\1/p')
