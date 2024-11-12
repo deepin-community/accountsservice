@@ -1,3 +1,10 @@
+accountsservice (23.13.9-6deepin2) unstable; urgency=medium
+
+  * Synced upstream patch so that unit tests can be finished since
+    `assertequals` was replaced by `assertequal` in unittest module.
+
+ -- zhoushicheng <zhoushicheng@uniontech.com>  Tue, 12 Nov 2024 09:58:49 +0800
+
 accountsservice (23.13.9-6deepin1) unstable; urgency=medium
 
   * generate-version.sh: Do not guess version from git or tarball.

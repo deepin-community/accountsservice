@@ -3,3 +3,5 @@ git_default_gdm.patch
 0002-create-and-manage-groups-like-on-a-debian-system.patch
 no-check-format.patch
 assume-version-from-d-changelog.patch
+tests-s-assertEquals-assertEqual.patch
+
